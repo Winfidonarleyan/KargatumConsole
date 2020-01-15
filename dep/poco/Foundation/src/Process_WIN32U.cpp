@@ -172,8 +172,6 @@ ProcessHandleImpl* ProcessImpl::launchImpl(const std::string& command, const Arg
 		commandLine.append(escapeArg(*it));
 	}
 
-	printf(">> %s\n", commandLine.c_str());
-
 	std::wstring ucommandLine;
 	UnicodeConverter::toUTF16(commandLine, ucommandLine);
 

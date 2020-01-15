@@ -83,7 +83,6 @@ target_link_libraries(Foundation
 
 target_compile_definitions(Foundation
   PUBLIC
-    # $<$<CONFIG:Debug>:_DEBUG>
     POCO_ENABLE_CPP14)
 
 target_compile_features(Foundation
@@ -95,6 +94,53 @@ if(WIN32)
   target_link_libraries(Foundation PRIVATE iphlpapi)
 endif()
 
+if (UNIX)
+  target_compile_definitions(Foundation 
+    PRIVATE
+      POCO_OS_FAMILY_UNIX)
+  
+  if (APPLE)
+  target_compile_definitions(Foundation 
+    PRIVATE 
+      POCO_HAVE_IPv6 
+      POCO_NO_STAT64)
+  
+  target_link_libraries(Foundation 
+    PRIVATE 
+      ${CMAKE_DL_LIBS})
+  else()
+  target_compile_definitions(Foundation 
+    PRIVATE 
+      _REENTRANT 
+      _THREAD_SAFE 
+      _LARGEFILE64_SOURCE 
+      _FILE_OFFSET_BITS=64)
+
+  target_compile_definitions(Foundation 
+    PRIVATE
+      _XOPEN_SOURCE=500
+      POCO_HAVE_FD_EPOLL)
+
+  target_link_libraries(Foundation
+    PRIVATE 
+      pthread 
+      ${CMAKE_DL_LIBS} 
+      rt)
+  endif(APPLE)
+endif(UNIX)
+
+if(CMAKE_COMPILER_IS_MINGW)
+  target_compile_definitions(Foundation
+	  PUBLIC
+      WC_NO_BEST_FIT_CHARS=0x400
+      POCO_WIN32_UTF8
+      _WIN32
+      MINGW32
+      WINVER=0x500
+      ODBCVER=0x0300
+      POCO_THREAD_STACK_SIZE)
+endif()
+
 target_include_directories(Foundation
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -104,3 +150,16 @@ target_include_directories(Foundation
 target_compile_definitions(Foundation
   PUBLIC
     POCO_STATIC)
+
+if (MINGW)
+  target_compile_definitions(Foundation
+    PUBLIC
+      WC_NO_BEST_FIT_CHARS=0x400
+      _WIN32
+      MINGW32
+      WINVER=0x500
+      ODBCVER=0x0300
+      POCO_THREAD_STACK_SIZE)
+endif()
+
+
