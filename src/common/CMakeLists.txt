@@ -29,7 +29,7 @@ target_link_libraries(common
     kargatum-core-interface
   PUBLIC
     fmt
-    Poco::Util)
+    Poco::Foundation)
 
 add_dependencies(common revision_data.h)
 
