@@ -1,10 +1,13 @@
 /*
- * Copyright (C) 
+ * Copyright (C) since 2020 Andrei Guluaev (Winfidonarleyan/Kargatum) https://github.com/Winfidonarleyan
+ * Licence MIT https://opensource.org/MIT
  */
 
 #include "ModuleCreator.h"
 #include "Log.h"
 #include "StringFormat.h"
+#include "Poco/File.h"
+#include "Poco/Exception.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -17,40 +20,91 @@ ModuleCreator* ModuleCreator::instance()
 
 void ModuleCreator::CreateBaseArgs(std::string const& moduleName)
 {
-    scriptName = GetScriptName(moduleName);
+    scriptName = GetScriptsName(moduleName);
     correctModuleName = GetCorrectModuleName(moduleName);
     pathToModule = "mods-created/" + correctModuleName;
+    pathToModuleSrc = pathToModule + "/src/";
     defineText = GetUpperText(moduleName);
+
+    LOG_DEBUG("");
+    LOG_DEBUG("Create defines:");
+    LOG_DEBUG("> scriptName - %s", scriptName.c_str());
+    LOG_DEBUG("> correctModuleName - %s", correctModuleName.c_str());
+    LOG_DEBUG("> pathToModule - %s", pathToModule.c_str());
+    LOG_DEBUG("> pathToModuleSrc - %s", pathToModuleSrc.c_str());
+    LOG_DEBUG("> defineText - %s", defineText.c_str());
+    LOG_DEBUG("");
 }
 
-std::string ModuleCreator::GetHeadText()
+void ModuleCreator::AddLineInText(std::string& text, std::string&& message)
 {
-    std::string text;
-    
-    text += "/*";
-    text += " * Copyright (C) since 2020 Andrei Guluaev (Winfidonarleyan/Kargatum) https://github.com/Winfidonarleyan";
-    text += " * Licence MIT https://opensource.org/MIT";
-    text += " */";
+    text += message + "\n";
 
-    return text;
+    LOG_TRACE("> Added line (%s)", message.c_str());
+}
+
+bool ModuleCreator::AddTextInFile(std::string const& path, std::string const& text)
+{
+    // Path to file
+    std::filesystem::path const temp(path);
+
+    std::ofstream file(temp.generic_string());
+    if (!file.is_open())
+    {
+        LOG_FATAL("Failed to create file '%s'", temp.generic_string().c_str());
+        LOG_INFO("");
+        return false;
+    }
+
+    file << text;
+    file.close();
+
+    return true;
+}
+
+bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
+{
+    std::string cppFileName = GetScriptCPPFileName(moduleName);
+    std::string hFileName = GetScriptHFileName(moduleName);
+
+    LOG_DEBUG("> Try create cpp file - %s", cppFileName.c_str());
+
+    std::string _text;
+
+    AddLineInText(_text, GetHeadText().c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"Log.h\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"GameConfig.h\"", hFileName.c_str());
+
+    if (!AddTextInFile(pathToModuleSrc + cppFileName, _text))
+        return false;
+
+    LOG_INFO("> Created - %s", cppFileName.c_str());
+    LOG_DEBUG("> Try create h file - %s", hFileName.c_str());
+
+    _text.clear();
+
+    AddLineInText(_text, GetHeadText().c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "#ifndef _%s_H_", defineText.c_str());
+    AddLineInText(_text, "#define _%s_H_", defineText.c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "#endif /* _%s_H_ */", defineText.c_str());
+
+    if (!AddTextInFile(pathToModuleSrc + hFileName, _text))
+        return false;
+
+    LOG_INFO("> Created - %s", hFileName.c_str());
+
+    return true;
 }
 
 bool ModuleCreator::CreateScriptLoader(std::string const& moduleName)
 {
     std::string fileName = GetScriptLoaderFileName(moduleName);
 
-    // Path of file
-    std::filesystem::path const temp(pathToModule + "/src/" + fileName);
-
     LOG_DEBUG("> Try create script loader - %s", fileName.c_str());
-
-    std::ofstream file(temp.generic_string());
-    if (!file.is_open())
-    {
-        LOG_FATAL("Failed to create script loader \"%s\"!", temp.generic_string().c_str());
-        LOG_INFO("");
-        return false;
-    }
 
     std::string _text;
 
@@ -68,52 +122,176 @@ bool ModuleCreator::CreateScriptLoader(std::string const& moduleName)
     AddLineInText(_text, "   AddSC_%s();", scriptName.c_str());
     AddLineInText(_text, "}");
     AddLineInText(_text, "");
-    AddLineInText(_text, "#endif /* %s */", defineText.c_str());
+    AddLineInText(_text, "#endif /* _%s_LOADER_H_ */", defineText.c_str());
 
-    file.close();
+    if (!AddTextInFile(pathToModuleSrc + fileName, _text))
+        return false;
 
-    LOG_DEBUG("> Created script loader (%s)", temp.generic_string().c_str());
+    LOG_INFO("> Created script loader (%s)", fileName.c_str());
+
+    return true;
+}
+
+bool ModuleCreator::CreateSCFile(std::string const& moduleName)
+{
+    std::string SCFileName = GetSCCPPFileName(moduleName);
+    std::string hFileName = GetScriptHFileName(moduleName);
+
+    LOG_DEBUG("> Try create cpp file - %s", SCFileName.c_str());
+
+    std::string _text;
+
+    AddLineInText(_text, GetHeadText().c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"Log.h\"");
+    AddLineInText(_text, "#include \"ScriptMgr.h\"");
+    AddLineInText(_text, "#include \"GameConfig.h\"");    
+    AddLineInText(_text, "#include \"Chat.h\"");
+    AddLineInText(_text, "#include \"Player.h\"");
+    AddLineInText(_text, "#include \"ScriptedGossip.h\"");
+    AddLineInText(_text, "");
+    AddLineInText(_text, "// Group all custom scripts");
+    AddLineInText(_text, "void AddSC_%s();", scriptName.c_str());
+    AddLineInText(_text, "{");
+    AddLineInText(_text, "");
+    AddLineInText(_text, "}");
+
+    if (!AddTextInFile(pathToModuleSrc + SCFileName, _text))
+        return false;
+
+    LOG_INFO("> Created - %s", SCFileName.c_str());
+
+    return true;
+}
+
+bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
+{
+    std::string configFileName = GetConfigFileName(moduleName);
+
+    LOG_DEBUG("> Try create config file - %s", configFileName.c_str());
+
+    std::string _text;
+
+    AddLineInText(_text, GetHeadText(true).c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "########################################");
+    AddLineInText(_text, "# %s module configuration", GetScriptsName(moduleName).c_str());
+    AddLineInText(_text, "########################################");
+    AddLineInText(_text, "[worldserver]");
+    AddLineInText(_text, "");
+    AddLineInText(_text, "#");
+    AddLineInText(_text, "#");
+    AddLineInText(_text, "#");
+
+    if (!AddTextInFile(pathToModule + "/conf/" + configFileName, _text))
+        return false;
+
+    LOG_INFO("> Created - %s", configFileName.c_str());
+
+    return true;
+}
+
+bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
+{
+    LOG_DEBUG("> Try create - CMakeLists.txt");
+
+    std::string _text;
+
+    AddLineInText(_text, GetHeadText(true).c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "# Add source files");
+    AddLineInText(_text, "AC_ADD_MODULES_SOURCE(\"%s\")", scriptName.c_str());
+    AddLineInText(_text, "");
+    AddLineInText(_text, "# Add config file");
+    AddLineInText(_text, "AC_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/%s\")", GetConfigFileName(moduleName).c_str());
+
+    if (!AddTextInFile(pathToModule + "/" + "CMakeLists.txt", _text))
+        return false;
+
+    LOG_INFO("> Created - CMakeLists.txt");
 
     return true;
 }
 
 bool ModuleCreator::CopyBaseModuleFiles()
 {
-    namespace fs = std::filesystem;
-    std::error_code e;
-
-    // Copy base module files
-    fs::copy("mod-based", pathToModule, fs::copy_options::recursive, e);
-
-    if (e.value())
+    try
     {
-        LOG_ERROR("> Failed copy modules base files - %s", e.message().c_str());
+        Poco::File _file("mod-based");
+        _file.copyTo(pathToModule);
+    }
+    catch (const Poco::Exception& e)
+    {
+        LOG_FATAL("> Failed copy modules base files - %s", e.message());
         return false;
     }
+
+    LOG_INFO("> Base module files moved sucessfull");
 
     return true;
 }
 
 void ModuleCreator::CreateModule(std::string const& moduleName)
 {
+    CreateBaseArgs(moduleName);
+
     LOG_INFO("Creating module - %s", moduleName.c_str());
     LOG_INFO("> Move base module files to new module - %s", correctModuleName.c_str());
 
+    // #1. Cope base files
     CopyBaseModuleFiles();
-    //CreateScriptLoader(moduleName);
+
+    // #2. Create script_loader.cpp
+    CreateScriptLoader(moduleName);
+
+    // #3. Create class files
+    CreateClassFiles(moduleName);
+
+    // #4. Create SC file
+    CreateSCFile(moduleName);
+
+    // #5. Create config file
+    CreateConfigFile(moduleName);
+
+    // #6. Create CMakeLists.txt
+    CreateCmakeFile(moduleName);
 }
 
-void ModuleCreator::AddLineInText(std::string& text, std::string&& message)
+// Text transform
+std::string ModuleCreator::GetHeadText(bool isSpecal /*= false*/)
 {
-    text += message + "\n";
+    std::string text;
 
-    LOG_TRACE("> Added line (%s)", message.c_str());
+    if (!isSpecal)
+    {
+        text += "/*\n";
+        text += " * Copyright (C) since 2020 Andrei Guluaev (Winfidonarleyan/Kargatum) https://github.com/Winfidonarleyan\n";
+        text += " * Licence MIT https://opensource.org/MIT\n";
+        text += " */";
+    }
+    else
+    {
+        text += "#\n";
+        text += "# Copyright (C) since 2020 Andrei Guluaev (Winfidonarleyan/Kargatum) https://github.com/Winfidonarleyan\n";
+        text += "# Licence MIT https://opensource.org/MIT\n";
+        text += "#";
+    }
+
+    return text;
 }
 
-std::string ModuleCreator::GetScriptName(std::string str)
+std::string ModuleCreator::GetScriptsName(std::string str)
 {
     str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
     return str;
+}
+
+std::string ModuleCreator::GetConfigFileName(std::string str)
+{
+    str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
+    str.erase(std::remove(str.begin(), str.end(), '-'), str.end());
+    return str + ".conf.dist";
 }
 
 std::string ModuleCreator::GetScriptLoaderFileName(std::string str)
@@ -121,6 +299,27 @@ std::string ModuleCreator::GetScriptLoaderFileName(std::string str)
     std::string text;
     std::transform(str.begin(), str.end(), std::back_inserter(text), tolower);
     return text + "_loader.cpp";
+}
+
+std::string ModuleCreator::GetScriptCPPFileName(std::string str)
+{
+    str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
+    str.erase(std::remove(str.begin(), str.end(), '-'), str.end());
+    return str + ".cpp";
+}
+
+std::string ModuleCreator::GetSCCPPFileName(std::string str)
+{
+    str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
+    str.erase(std::remove(str.begin(), str.end(), '-'), str.end());
+    return str + "_SC.cpp";
+}
+
+std::string ModuleCreator::GetScriptHFileName(std::string str)
+{
+    str.erase(std::remove(str.begin(), str.end(), '_'), str.end());
+    str.erase(std::remove(str.begin(), str.end(), '-'), str.end());
+    return str + ".h";
 }
 
 std::string ModuleCreator::GetCorrectModuleName(std::string str)

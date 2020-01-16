@@ -15,14 +15,22 @@ public:
     void CreateModule(std::string const& moduleName);
 
 private:
-    bool CreateScriptLoader(std::string const& moduleName);
     bool CopyBaseModuleFiles();
+    bool CreateScriptLoader(std::string const& moduleName);
+    bool CreateClassFiles(std::string const& moduleName);
+    bool CreateSCFile(std::string const& moduleName);
+    bool CreateConfigFile(std::string const& moduleName);
+    bool CreateCmakeFile(std::string const& moduleName);
     
-    std::string GetScriptName(std::string str);
+    std::string GetScriptsName(std::string str);
+    std::string GetConfigFileName(std::string str);
     std::string GetScriptLoaderFileName(std::string str);
+    std::string GetScriptCPPFileName(std::string str);
+    std::string GetSCCPPFileName(std::string str);
+    std::string GetScriptHFileName(std::string str);
     std::string GetCorrectModuleName(std::string str);
     std::string GetUpperText(std::string str);
-    std::string GetHeadText();
+    std::string GetHeadText(bool isSpecal = false);
 
     template<typename Format, typename... Args>
     inline void AddLineInText(std::string& text, Format&& fmt, Args&& ... args)
@@ -32,11 +40,13 @@ private:
 
     void CreateBaseArgs(std::string const& moduleName);
     void AddLineInText(std::string& text, std::string&& message);
+    bool AddTextInFile(std::string const& path, std::string const& text);
 
     // Global variables
     std::string scriptName;
     std::string correctModuleName;
     std::string pathToModule;
+    std::string pathToModuleSrc;
     std::string defineText;
 };
 

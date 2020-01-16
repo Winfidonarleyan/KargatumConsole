@@ -5,7 +5,9 @@
 #include "Common.h"
 #include "Log.h"
 #include "ModuleCreator.h"
+#include "Poco/File.h"
 #include <iostream>
+#include <cstdlib>
 
 void Load()
 {
@@ -45,8 +47,6 @@ int Selection()
 int main()
 {
     Load();
-
-    LOG_INFO("реяр TEST");
 
     while (Selection())
     {

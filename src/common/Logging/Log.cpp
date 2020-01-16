@@ -88,6 +88,7 @@ void Log::InitSystemLogger()
     try
     {
         _ConsoleChannel->setProperty("informationColor", "cyan");
+        _ConsoleChannel->setProperty("debugColor", "lightMagenta");
     }
     LOG_CATCH
 
