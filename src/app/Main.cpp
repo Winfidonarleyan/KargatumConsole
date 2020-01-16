@@ -51,11 +51,7 @@ int main()
     while (Selection())
     {
         Selection();
-    }
-
-    //std::string text = "Kargatum_Anti_AD";
-
-    //LOG_INFO("Kargatum_Anti_AD -> %s", TransformToModuleName(text));
+    }    
 
     LOG_INFO("> Good bye!!!");
 

@@ -140,7 +140,7 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     LOG_DEBUG("> Try create cpp file - %s", SCFileName.c_str());
 
     std::string _text;
-
+    
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
@@ -151,10 +151,21 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     AddLineInText(_text, "#include \"Player.h\"");
     AddLineInText(_text, "#include \"ScriptedGossip.h\"");
     AddLineInText(_text, "");
-    AddLineInText(_text, "// Group all custom scripts");
-    AddLineInText(_text, "void AddSC_%s();", scriptName.c_str());
+    AddLineInText(_text, "class %s_World : public WorldScript", scriptName.c_str());
     AddLineInText(_text, "{");
+    AddLineInText(_text, "public:");
+    AddLineInText(_text, "    %s_World() : WorldScript(\"%s_World\") { }", scriptName.c_str(), scriptName.c_str());
     AddLineInText(_text, "");
+    AddLineInText(_text, "    void OnAfterConfigLoad(bool /*reload*/) override");
+    AddLineInText(_text, "    {");
+    AddLineInText(_text, "        // Add conigs options configiration");
+    AddLineInText(_text, "    }");
+    AddLineInText(_text, "};");
+    AddLineInText(_text, "");
+    AddLineInText(_text, "// Group all custom scripts");
+    AddLineInText(_text, "void AddSC_%s()", scriptName.c_str());
+    AddLineInText(_text, "{");
+    AddLineInText(_text, "    new %s_World();", scriptName.c_str());
     AddLineInText(_text, "}");
 
     if (!AddTextInFile(pathToModuleSrc + SCFileName, _text))
