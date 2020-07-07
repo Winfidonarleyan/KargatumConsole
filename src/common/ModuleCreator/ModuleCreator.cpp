@@ -212,10 +212,10 @@ bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
     AddLineInText(_text, GetHeadText(true).c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "# Add source files");
-    AddLineInText(_text, "AC_ADD_MODULES_SOURCE(\"%s\")", scriptName.c_str());
+    AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"%s\")", scriptName.c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "# Add config file");
-    AddLineInText(_text, "AC_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/%s\")", GetConfigFileName(moduleName).c_str());
+    AddLineInText(_text, "WH_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/%s\")", GetConfigFileName(moduleName).c_str());
 
     if (!AddTextInFile(pathToModule + "/" + "CMakeLists.txt", _text))
         return false;
@@ -276,16 +276,39 @@ std::string ModuleCreator::GetHeadText(bool isSpecal /*= false*/)
 
     if (!isSpecal)
     {
+        
         text += "/*\n";
-        text += " * Copyright (C) since 2020 Andrei Guluaev (Winfidonarleyan/Kargatum) https://github.com/Winfidonarleyan\n";
-        text += " * Licence MIT https://opensource.org/MIT\n";
-        text += " */";
+        text += "* This file is part of the WarheadCore Project. See AUTHORS file for Copyright information\n";
+        text += "*\n";
+        text += "* This program is free software; you can redistribute it and/or modify it\n";
+        text += "* under the terms of the GNU General Public License as published by the\n";
+        text += "* Free Software Foundation; either version 2 of the License, or (at your\n";
+        text += "* option) any later version.\n";
+        text += "*\n";
+        text += "* This program is distributed in the hope that it will be useful, but WITHOUT\n";
+        text += "* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n";
+        text += "* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for\n";
+        text += "* more details.\n";
+        text += "*\n";
+        text += "* You should have received a copy of the GNU General Public License along\n";
+        text += "* with this program. If not, see <http://www.gnu.org/licenses/>.\n";
+        text += "*/";
     }
     else
     {
         text += "#\n";
-        text += "# Copyright (C) since 2020 Andrei Guluaev (Winfidonarleyan/Kargatum) https://github.com/Winfidonarleyan\n";
-        text += "# Licence MIT https://opensource.org/MIT\n";
+        text += "# This file is part of the WarheadCore Project. See AUTHORS file for Copyright information\n";
+        text += "#\n";
+        text += "# This file is free software; as a special exception the author gives\n";
+        text += "# unlimited permission to copy and/or distribute it, with or without\n";
+        text += "# modifications, as long as this notice is preserved.\n";
+        text += "#\n";
+        text += "# This program is distributed in the hope that it will be useful, but\n";
+        text += "# WITHOUT ANY WARRANTY, to the extent permitted by law; without even the\n";
+        text += "# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
+        text += "#\n";
+        text += "# User has manually chosen to ignore the git-tests, so throw them a warning.\n";
+        text += "# This is done EACH compile so they can be alerted about the consequences.\n";
         text += "#";
     }
 
