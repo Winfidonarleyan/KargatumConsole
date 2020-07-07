@@ -74,8 +74,8 @@ bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
-    AddLineInText(_text, "#include \"Log.h\"", hFileName.c_str());
-    AddLineInText(_text, "#include \"GameConfig.h\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"Log.h\"");
+    AddLineInText(_text, "#include \"%s.h\"", _IsWarheadModule ? "GameConfig" : "Config");
 
     if (!AddTextInFile(pathToModuleSrc + cppFileName, _text))
         return false;
@@ -146,7 +146,7 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
     AddLineInText(_text, "#include \"Log.h\"");
     AddLineInText(_text, "#include \"ScriptMgr.h\"");
-    AddLineInText(_text, "#include \"GameConfig.h\"");    
+    AddLineInText(_text, "#include \"%s.h\"", _IsWarheadModule ? "GameConfig" : "Config");
     AddLineInText(_text, "#include \"Chat.h\"");
     AddLineInText(_text, "#include \"Player.h\"");
     AddLineInText(_text, "#include \"ScriptedGossip.h\"");
@@ -212,10 +212,20 @@ bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
     AddLineInText(_text, GetHeadText(true).c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "# Add source files");
-    AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"%s\")", scriptName.c_str());
+
+    if (_IsWarheadModule)
+        AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"%s\")", scriptName.c_str());
+    else
+    {
+        AddLineInText(_text, "AC_ADD_SCRIPT(\"${CMAKE_CURRENT_LIST_DIR}/src/%s\")", GetSCCPPFileName(moduleName).c_str());
+        AddLineInText(_text, "");
+        AddLineInText(_text, "# Add scripts to script loader");
+        AddLineInText(_text, "AC_ADD_SCRIPT_LOADER(\"%s\" \"${CMAKE_CURRENT_LIST_DIR}/src/%s\")", scriptName.c_str(), GetScriptLoaderFileName(moduleName).c_str());
+    }
+
     AddLineInText(_text, "");
     AddLineInText(_text, "# Add config file");
-    AddLineInText(_text, "WH_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/%s\")", GetConfigFileName(moduleName).c_str());
+    AddLineInText(_text, "%s_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/%s\")", _IsWarheadModule ? "WH" : "AC", GetConfigFileName(moduleName).c_str());
 
     if (!AddTextInFile(pathToModule + "/" + "CMakeLists.txt", _text))
         return false;
@@ -243,11 +253,13 @@ bool ModuleCreator::CopyBaseModuleFiles()
     return true;
 }
 
-void ModuleCreator::CreateModule(std::string const& moduleName)
+void ModuleCreator::CreateModule(std::string const& moduleName, bool isWarheadModule /*= true*/)
 {
+    _IsWarheadModule = isWarheadModule;
+
     CreateBaseArgs(moduleName);
 
-    LOG_INFO("Creating module - %s", moduleName.c_str());
+    LOG_INFO("Creating %sCore module - %s", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName.c_str());
     LOG_INFO("> Move base module files to new module - %s", correctModuleName.c_str());
 
     // #1. Cope base files
@@ -332,7 +344,7 @@ std::string ModuleCreator::GetScriptLoaderFileName(std::string str)
 {
     std::string text;
     std::transform(str.begin(), str.end(), std::back_inserter(text), tolower);
-    return text + "_loader.cpp";
+    return text +  "_loader." + (_IsWarheadModule ? "cpp" : "h");
 }
 
 std::string ModuleCreator::GetScriptCPPFileName(std::string str)

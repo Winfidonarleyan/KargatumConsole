@@ -12,7 +12,7 @@ class K_COMMON_API ModuleCreator
 public:
     static ModuleCreator* instance();
 
-    void CreateModule(std::string const& moduleName);
+    void CreateModule(std::string const& moduleName, bool isWarheadModule = true);
 
 private:
     bool CopyBaseModuleFiles();
@@ -48,6 +48,8 @@ private:
     std::string pathToModule;
     std::string pathToModuleSrc;
     std::string defineText;
+
+    bool _IsWarheadModule = true;
 };
 
 #define sModule ModuleCreator::instance()
