@@ -1,6 +1,6 @@
 # output generic information about the core and buildtype chosen
 message("")
-message("* KS revision   : ${rev_hash} ${rev_date} (${rev_branch} branch)")
+message("* WH Console revision    : ${rev_hash} ${rev_date} (${rev_branch} branch)")
 message("")
 
 # Show infomation about the options selected during configuration
