@@ -113,8 +113,6 @@ namespace
         }
 
         file.write(text.c_str(), text.size());
-
-        //file << text;
         file.close();
     }
 
@@ -146,7 +144,6 @@ namespace
             return;
         }
 
-        //file << text;
         file.write(text.c_str(), text.size());
         file.close();
     }
@@ -176,7 +173,6 @@ void Cleanup::CheckWhitespace()
     uint32 ms = getMSTime();
 
     LOG_INFO("> Cleanup: Start cleanup (whitespace) for '%s'", _path.generic_string().c_str());
-    LOG_INFO("> Cleanup: Vector size '%u'", static_cast<uint32>(_localeFileStorage.size()));
 
     filesReplaceCount = 0;
     ReplaceWhitespace = 0;
@@ -194,7 +190,6 @@ void Cleanup::CheckTabs()
     uint32 ms = getMSTime();
 
     LOG_INFO("> Cleanup: Start cleanup (tabs) for '%s'", _path.generic_string().c_str());
-    LOG_INFO("> Cleanup: Vector size '%u'", static_cast<uint32>(_localeFileStorage.size()));
 
     filesReplaceCount = 0;
     ReplaceWhitespace = 0;

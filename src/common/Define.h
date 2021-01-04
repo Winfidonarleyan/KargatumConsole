@@ -2,8 +2,8 @@
  * Copyright (C) 
  */
 
-#ifndef KARGATUM_DEFINE_H
-#define KARGATUM_DEFINE_H
+#ifndef WH_DEFINE_H
+#define WH_DEFINE_H
 
 #include "CompilerDefs.h"
 
@@ -11,8 +11,8 @@
 #include <cinttypes>
 #include <climits>
 
-#if KARGATUM_PLATFORM == KARGATUM_PLATFORM_WINDOWS
-#  define KARGATUM_PATH_MAX 260
+#if WH_PLATFORM == WH_PLATFORM_WINDOWS
+#  define WH_PATH_MAX 260
 #  define _USE_MATH_DEFINES
 #  ifndef DECLSPEC_NORETURN
 #    define DECLSPEC_NORETURN __declspec(noreturn)
@@ -20,21 +20,21 @@
 #  ifndef DECLSPEC_DEPRECATED
 #    define DECLSPEC_DEPRECATED __declspec(deprecated)
 #  endif //DECLSPEC_DEPRECATED
-#endif // KARGATUM_PLATFORM
+#endif // WH_PLATFORM
 
 
-#if KARGATUM_COMPILER == KARGATUM_COMPILER_GNU
+#if WH_COMPILER == WH_COMPILER_GNU
 #  define ATTR_NORETURN __attribute__((__noreturn__))
 #  define ATTR_PRINTF(F, V) __attribute__ ((__format__ (__printf__, F, V)))
 #  define ATTR_DEPRECATED __attribute__((__deprecated__))
-#else //KARGATUM_COMPILER != KARGATUM_COMPILER_GNU
+#else //WH_COMPILER != WH_COMPILER_GNU
 #  define ATTR_NORETURN
 #  define ATTR_PRINTF(F, V)
 #  define ATTR_DEPRECATED
-#endif //KARGATUM_COMPILER == KARGATUM_COMPILER_GNU
+#endif //WH_COMPILER == WH_COMPILER_GNU
 
-#ifdef KARGATUM_API_USE_DYNAMIC_LINKING
-#  if KARGATUM_COMPILER == KARGATUM_COMPILER_MICROSOFT
+#ifdef WH_API_USE_DYNAMIC_LINKING
+#  if WH_COMPILER == WH_COMPILER_MICROSOFT
 #    define K_API_EXPORT __declspec(dllexport)
 #    define K_API_IMPORT __declspec(dllimport)
 #  else
@@ -45,7 +45,7 @@
 #  define K_API_IMPORT
 #endif
 
-#ifdef KARGATUM_API_EXPORT_COMMON
+#ifdef WH_API_EXPORT_COMMON
 #  define WH_COMMON_API K_API_EXPORT
 #else
 #  define WH_COMMON_API K_API_IMPORT
@@ -68,4 +68,4 @@ typedef uint32_t uint32;
 typedef uint16_t uint16;
 typedef uint8_t uint8;
 
-#endif //KARGATUM_DEFINE_H
+#endif //WH_DEFINE_H

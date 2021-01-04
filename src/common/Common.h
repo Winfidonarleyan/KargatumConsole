@@ -10,11 +10,11 @@
 #include <string>
 #include <utility>
 
-#if KARGATUM_PLATFORM == KARGATUM_PLATFORM_WINDOWS
+#if WH_PLATFORM == WH_PLATFORM_WINDOWS
 #include <ws2tcpip.h>
 #endif
 
-#if KARGATUM_COMPILER == KARGATUM_COMPILER_MICROSOFT
+#if WH_COMPILER == WH_COMPILER_MICROSOFT
 #define atoll _atoi64
 #define llabs _abs64
 #endif

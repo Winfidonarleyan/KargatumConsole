@@ -1,5 +1,18 @@
 /*
- * Copyright (C) 
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "GitRevision.h"
@@ -50,30 +63,24 @@ char const* GitRevision::GetMySQLExecutable()
     return _MYSQL_EXECUTABLE;
 }
 
-#if KARGATUM_PLATFORM == KARGATUM_PLATFORM_WINDOWS
+#if WH_PLATFORM == WH_PLATFORM_WINDOWS
 #  ifdef _WIN64
-#    define KARGATUM_PLATFORM_STR "Win64"
+#    define WH_PLATFORM_STR "Win64"
 #  else
-#    define KARGATUM_PLATFORM_STR "Win32"
+#    define WH_PLATFORM_STR "Win32"
 #  endif
-#elif KARGATUM_PLATFORM == KARGATUM_PLATFORM_APPLE
-#  define KARGATUM_PLATFORM_STR "MacOSX"
-#elif KARGATUM_PLATFORM == KARGATUM_PLATFORM_INTEL
-#  define KARGATUM_PLATFORM_STR "Intel"
-#else // KARGATUM_PLATFORM_UNIX
-#  define KARGATUM_PLATFORM_STR "Unix"
 #endif
 
-#ifndef KARGATUM_API_USE_DYNAMIC_LINKING
-#  define KARGATUM_LINKAGE_TYPE_STR "Static"
+#ifndef WH_API_USE_DYNAMIC_LINKING
+#  define WH_LINKAGE_TYPE_STR "Static"
 #else
-#  define KARGATUM_LINKAGE_TYPE_STR "Dynamic"
+#  define WH_LINKAGE_TYPE_STR "Dynamic"
 #endif
 
 char const* GitRevision::GetFullVersion()
 {
-  return "KargatumConsole rev. " VER_PRODUCTVERSION_STR
-    " (" KARGATUM_PLATFORM_STR ", " _BUILD_DIRECTIVE ", " KARGATUM_LINKAGE_TYPE_STR ")";
+  return "WarheadConsole rev. " VER_PRODUCTVERSION_STR
+    " (" WH_PLATFORM_STR ", " _BUILD_DIRECTIVE ", " WH_LINKAGE_TYPE_STR ")";
 }
 
 char const* GitRevision::GetCompanyNameStr()
