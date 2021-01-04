@@ -12,4 +12,4 @@ add_subdirectory(Foundation)
 # add_subdirectory(Net)
 
 # Add lib Poco::Util
-# add_subdirectory(Util)
+add_subdirectory(Util)
