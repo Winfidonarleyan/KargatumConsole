@@ -39,4 +39,6 @@ target_include_directories(Util
   PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-# set_target_properties(Net PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(Util
+  PRIVATE
+    warhead-dependency-interface)
