@@ -17,24 +17,23 @@
 
 #include "Log.h"
 #include "Util.h"
-#include "Poco/FormattingChannel.h"
-#include "Poco/PatternFormatter.h"
-#include "Poco/SplitterChannel.h"
-#include "Poco/FileChannel.h"
-#include "Poco/Logger.h"
-#include "Poco/AutoPtr.h"
+#include <Poco/FormattingChannel.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/SplitterChannel.h>
+#include <Poco/FileChannel.h>
+#include <Poco/Logger.h>
+#include "Poco/WindowsConsoleChannel.h"
+#include <Poco/AutoPtr.h>
+#include <Poco/Exception.h>
+#include <filesystem>
 #include <sstream>
 
-#if KARGATUM_PLATFORM == KARGATUM_PLATFORM_WINDOWS
-#include "Poco/WindowsConsoleChannel.h"
-#include <filesystem>
-#define CONSOLE_CHANNEL WindowsColorConsoleChannel
-#else
-#include "Poco/ConsoleChannel.h"
-#define CONSOLE_CHANNEL ColorConsoleChannel
-#endif
-
 using namespace Poco;
+
+namespace
+{
+    LogLevel highestLogLevel;
+}
 
 Log::Log()
 {
@@ -60,9 +59,10 @@ void Log::Clear()
 
 void Log::Initialize()
 {
+    highestLogLevel = LOG_LEVEL_FATAL;
+
     Clear();
     InitSystemLogger();
-    InitLogsDir();
 }
 
 void Log::InitSystemLogger()
@@ -71,85 +71,56 @@ void Log::InitSystemLogger()
     AutoPtr<PatternFormatter> _ConsolePattern(new PatternFormatter);
 
 #define LOG_CATCH \
-        catch (const std::exception& e) \
+        catch (const Poco::Exception& e) \
         { \
-            printf("Log::InitSystemLogger - %s\n", e.what()); \
+            printf("Log::InitSystemLogger - %s\n", e.displayText().c_str()); \
         } \
 
     try
     {
-        _ConsolePattern->setProperty("pattern", "%t");
+        _ConsolePattern->setProperty("pattern", "%H:%M:%S %t");
         _ConsolePattern->setProperty("times", "local");
     }
     LOG_CATCH
 
-    AutoPtr<CONSOLE_CHANNEL> _ConsoleChannel(new CONSOLE_CHANNEL);
+    AutoPtr<WindowsColorConsoleChannel> _ConsoleChannel(new WindowsColorConsoleChannel);
 
     try
     {
+        _ConsoleChannel->setProperty("fatalColor", "lightRed");
+        _ConsoleChannel->setProperty("criticalColor", "lightRed");
+        _ConsoleChannel->setProperty("errorColor", "red");
+        _ConsoleChannel->setProperty("warningColor", "brown");
+        _ConsoleChannel->setProperty("noticeColor", "magenta");
         _ConsoleChannel->setProperty("informationColor", "cyan");
         _ConsoleChannel->setProperty("debugColor", "lightMagenta");
-    }
-    LOG_CATCH
-
-    // Start file channel
-    AutoPtr<FileChannel> _FileChannel(new FileChannel);
-
-    try
-    {
-        _FileChannel->setProperty("path", "System.log");
-        _FileChannel->setProperty("times", "local");
-        _FileChannel->setProperty("flush", "false");
-    }
-    LOG_CATCH
-
-    AutoPtr<PatternFormatter> _FilePattern(new PatternFormatter);
-
-    try
-    {
-        _FilePattern->setProperty("pattern", "%Y-%m-%d %H:%M:%S %t");
-        _FilePattern->setProperty("times", "local");
-    }
-    LOG_CATCH
-
-    AutoPtr<SplitterChannel> _split(new SplitterChannel);
-
-    try
-    {
-        _split->addChannel(new FormattingChannel(_ConsolePattern, _ConsoleChannel));
-        _split->addChannel(new FormattingChannel(_FilePattern, _FileChannel));
+        _ConsoleChannel->setProperty("traceColor", "green");
     }
     LOG_CATCH
 
     try
     {
-        Logger::create("system", _split, 6);
+        Logger::create("system", new FormattingChannel(_ConsolePattern, _ConsoleChannel), 6);
     }
     LOG_CATCH
-}
-
-void Log::InitLogsDir()
-{
-    m_logsDir = ".";
-
-    if (!m_logsDir.empty())
-        if ((m_logsDir.at(m_logsDir.length() - 1) != '/') && (m_logsDir.at(m_logsDir.length() - 1) != '\\'))
-            m_logsDir.push_back('/');
-
-#if KARGATUM_PLATFORM == KARGATUM_PLATFORM_WINDOWS
-    std::filesystem::path LogsPath(m_logsDir);
-    if (!std::filesystem::is_directory(LogsPath))
-        m_logsDir = "";
-#endif
 }
 
 bool Log::ShouldLog(LogLevel const level) const
 {
-    return Logger::get("system").getLevel() >= level;
+    // Don't even look for a logger if the LogLevel is higher than the highest log levels across all loggers
+    if (level > highestLogLevel)
+        return false;
+
+    Logger& logger = Logger::get("system");
+
+    LogLevel logLevel = LogLevel(logger.getLevel());
+    return logLevel != LOG_LEVEL_DISABLED && logLevel >= level;
 }
 
 void Log::SetLogLevel(LogLevel const level)
 {
+    highestLogLevel = level;
+
     Logger::get("system").setLevel(level);
 }
 
@@ -189,8 +160,8 @@ void Log::outSys(LogLevel const level, std::string&& message)
             break;
         }
     }
-    catch (const std::exception& e)
+    catch (const Poco::Exception& e)
     {
-        printf("Log::outSys - %s\n", e.what());
+        printf("Log::outSys - %s\n", e.displayText().c_str());
     }
 }

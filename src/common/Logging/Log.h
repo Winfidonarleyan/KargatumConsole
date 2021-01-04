@@ -36,7 +36,7 @@ enum LogLevel
     LOG_LEVEL_MAX
 };
 
-class K_COMMON_API Log
+class WH_COMMON_API Log
 {
 private:
     Log();
@@ -54,7 +54,7 @@ public:
     bool ShouldLog(LogLevel const level) const;
 
     template<typename Format, typename... Args>
-    void outSys(LogLevel const level, Format&& fmt, Args&& ... args)
+    inline void outSys(LogLevel const level, Format&& fmt, Args&& ... args)
     {
         outSys(level, Kargatum::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
     }
@@ -64,12 +64,7 @@ private:
 
     void Initialize();
     void InitSystemLogger();
-    void InitLogsDir();
-    void Clear();
-
-    std::string const& GetLogsDir() const { return m_logsDir; }
-    
-    std::string m_logsDir;    
+    void Clear();  
 };
 
 #define sLog Log::instance()
@@ -87,31 +82,11 @@ private:
         } \
     }
 
-#if KS_PLATFORM != KS_PLATFORM_WINDOWS
-void check_args(char const*, ...) ATTR_PRINTF(1, 2);
-void check_args(std::string const&, ...);
-
-// This will catch format errors on build time
 #define LOG_MSG_BODY(level__, ...)                                      \
         do {                                                            \
             if (sLog->ShouldLog(level__))                               \
-            {                                                           \
-                if (false)                                              \
-                    check_args(__VA_ARGS__);                            \
-                                                                        \
                 LOG_EXCEPTION_FREE(level__, __VA_ARGS__);               \
-            }                                                           \
         } while (0)
-#else
-#define LOG_MSG_BODY(level__, ...)                                      \
-        __pragma(warning(push))                                         \
-        __pragma(warning(disable:4127))                                 \
-        do {                                                            \
-            if (sLog->ShouldLog(level__))                               \
-                LOG_EXCEPTION_FREE(level__, __VA_ARGS__);               \
-        } while (0)                                                     \
-        __pragma(warning(pop))
-#endif
 
 // Fatal - 1
 #define LOG_FATAL(...) \
