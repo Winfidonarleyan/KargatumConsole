@@ -19,9 +19,7 @@
 #include "Poco/Util/WinRegistryKey.h"
 #include "Poco/Thread.h"
 #include "Poco/Exception.h"
-#if defined(POCO_WIN32_UTF8)
 #include "Poco/UnicodeConverter.h"
-#endif
 
 
 using Poco::Thread;
@@ -47,6 +45,7 @@ WinService::WinService(const std::string& name):
 	if (!_scmHandle) throw SystemException("cannot open Service Control Manager");
 }
 
+
 WinService::WinService(SC_HANDLE scmHandle, const std::string& name):
 	_scmHandle(scmHandle),
 	_name(name),
@@ -54,6 +53,7 @@ WinService::WinService(SC_HANDLE scmHandle, const std::string& name):
 {
 	if (!_scmHandle) throw SystemException("Service Control Manager not connected");
 }
+
 
 WinService::~WinService()
 {
@@ -71,13 +71,9 @@ const std::string& WinService::name() const
 std::string WinService::displayName() const
 {
 	POCO_LPQUERY_SERVICE_CONFIG pSvcConfig = config();
-#if defined(POCO_WIN32_UTF8)
 	std::wstring udispName(pSvcConfig->lpDisplayName);
 	std::string dispName;
 	Poco::UnicodeConverter::toUTF8(udispName, dispName);
-#else
-	std::string dispName(pSvcConfig->lpDisplayName);
-#endif
 	LocalFree(pSvcConfig);
 	return dispName;
 }
@@ -86,13 +82,9 @@ std::string WinService::displayName() const
 std::string WinService::path() const
 {
 	POCO_LPQUERY_SERVICE_CONFIG pSvcConfig = config();
-#if defined(POCO_WIN32_UTF8)
 	std::wstring upath(pSvcConfig->lpBinaryPathName);
 	std::string path;
 	UnicodeConverter::toUTF8(upath, path);
-#else
-	std::string path(pSvcConfig->lpBinaryPathName);
-#endif
 	LocalFree(pSvcConfig);
 	return path;
 }
@@ -101,7 +93,6 @@ std::string WinService::path() const
 void WinService::registerService(const std::string& path, const std::string& displayName)
 {
 	close();
-#if defined(POCO_WIN32_UTF8)
 	std::wstring uname;
 	Poco::UnicodeConverter::toUTF16(_name, uname);
 	std::wstring udisplayName;
@@ -118,18 +109,6 @@ void WinService::registerService(const std::string& path, const std::string& dis
 		SERVICE_ERROR_NORMAL,
 		upath.c_str(),
 		NULL, NULL, NULL, NULL, NULL);
-#else
-	_svcHandle = CreateServiceA(
-		_scmHandle,
-		_name.c_str(),
-		displayName.c_str(), 
-		SERVICE_ALL_ACCESS,
-		SERVICE_WIN32_OWN_PROCESS,
-		SERVICE_DEMAND_START,
-		SERVICE_ERROR_NORMAL,
-		path.c_str(),
-		NULL, NULL, NULL, NULL, NULL);
-#endif
 	if (!_svcHandle)
 		throw SystemException("cannot register service", _name);
 }
@@ -146,6 +125,7 @@ void WinService::unregisterService()
 	open();
 	if (!DeleteService(_svcHandle))
 		throw SystemException("cannot unregister service", _name);
+	close();
 }
 
 
@@ -257,11 +237,17 @@ WinService::Startup WinService::getStartup() const
 
 void WinService::setFailureActions(FailureActionVector failureActions, const std::string& command, const std::string& rebootMessage)
 {
+
+	if (failureActions.size() > 3) {
+		throw InvalidArgumentException{ "Only 0-3 Failure Actions are supported" };
+	}
+
 	open();
-	auto actions = new SC_ACTION[3];
-#if defined(POCO_WIN32_UTF8)
+	auto actions = new SC_ACTION[failureActions.size()];
 	SERVICE_FAILURE_ACTIONSW ac;
-	
+	ac.lpCommand = NULL;
+	ac.lpRebootMsg = NULL;
+
 	std::wstring urebootMessage;
 	Poco::UnicodeConverter::toUTF16(rebootMessage, urebootMessage);
 	std::vector<wchar_t> rebootMessageVector{ urebootMessage.begin(), urebootMessage.end() };
@@ -271,27 +257,15 @@ void WinService::setFailureActions(FailureActionVector failureActions, const std
 	Poco::UnicodeConverter::toUTF16(command, uComamnd);
 	std::vector<wchar_t> commandVector{ uComamnd.begin(), uComamnd.end() };
 	commandVector.push_back('\0');
-#else
-	SERVICE_FAILURE_ACTIONSA ac;
 
-	std::vector<char> rebootMessageVector{ rebootMessage.begin(), rebootMessage.end() };
-	rebootMessageVector.push_back('\0');
-
-	std::vector<char> commandVector{ command.begin(), command.end() };
-	commandVector.push_back('\0');
-#endif
-	for (auto i = 0; i < 3; i++) 		
+	for (auto i = 0; i < failureActions.size(); i++) 		
 	{
 		switch (failureActions[i].type) 
 		{
 		case SVC_REBOOT:
 			actions[i].Type = SC_ACTION_REBOOT;
 			actions[i].Delay = failureActions[i].delay;
-#if defined(POCO_WIN32_UTF8)
 			ac.lpRebootMsg = &rebootMessageVector[0];
-#else
-			ac.lpRebootMsg = &rebootMessageVector[0];
-#endif
 			break;
 		case SVC_RESTART:
 			actions[i].Type = SC_ACTION_RESTART;
@@ -300,11 +274,7 @@ void WinService::setFailureActions(FailureActionVector failureActions, const std
 		case SVC_RUN_COMMAND:
 			actions[i].Type = SC_ACTION_RUN_COMMAND;
 			actions[i].Delay = failureActions[i].delay;
-#if defined(POCO_WIN32_UTF8)
 			ac.lpCommand = &commandVector[0];
-#else
-			ac.lpCommand = &commandVector[0];
-#endif
 			break;
 		default:
 			actions[i].Type = SC_ACTION_NONE;
@@ -314,14 +284,10 @@ void WinService::setFailureActions(FailureActionVector failureActions, const std
 	}
 
 	ac.dwResetPeriod = 0;
-	ac.cActions = 3;
+	ac.cActions = failureActions.size();
 	ac.lpsaActions = actions;
 
-#if defined(POCO_WIN32_UTF8)
 	if (!ChangeServiceConfig2W(_svcHandle, SERVICE_CONFIG_FAILURE_ACTIONS, &ac))
-#else
-	if (!ChangeServiceConfig2A(_svcHandle, SERVICE_CONFIG_FAILURE_ACTIONS, &ac))
-#endif
 	{
 		delete[] actions;
 		throw SystemException("cannot configure service", _name);
@@ -336,11 +302,7 @@ WinService::FailureActionTypeVector WinService::getFailureActions() const {
 	POCO_LPSERVICE_FAILURE_ACTION pSvcFailureAction = (POCO_LPSERVICE_FAILURE_ACTION)LocalAlloc(LPTR, size);
 	if (!pSvcFailureAction) throw OutOfMemoryException("cannot allocate service failure action buffer");
 	try {
-#if defined(POCO_WIN32_UTF8)
 		while (!QueryServiceConfig2W(_svcHandle, SERVICE_CONFIG_FAILURE_ACTIONS, (LPBYTE)pSvcFailureAction, size, &bytesNeeded))
-#else
-		while (!QueryServiceConfig2A(_svcHandle, SERVICE_CONFIG_FAILURE_ACTIONS, (LPBYTE)pSvcFailureAction, size, &bytesNeeded))
-#endif
 		{
 			if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
 				LocalFree(pSvcFailureAction);
@@ -411,13 +373,9 @@ bool WinService::tryOpen() const
 {
 	if (!_svcHandle)
 	{
-#if defined(POCO_WIN32_UTF8)
 		std::wstring uname;
 		Poco::UnicodeConverter::toUTF16(_name, uname);
 		_svcHandle = OpenServiceW(_scmHandle, uname.c_str(), SERVICE_ALL_ACCESS);
-#else
-		_svcHandle = OpenServiceA(_scmHandle, _name.c_str(), SERVICE_ALL_ACCESS);
-#endif
 	}
 	return _svcHandle != 0;
 }
@@ -442,11 +400,7 @@ POCO_LPQUERY_SERVICE_CONFIG WinService::config() const
 	if (!pSvcConfig) throw OutOfMemoryException("cannot allocate service config buffer");
 	try
 	{
-#if defined(POCO_WIN32_UTF8)
 		while (!QueryServiceConfigW(_svcHandle, pSvcConfig, size, &bytesNeeded))
-#else
-		while (!QueryServiceConfigA(_svcHandle, pSvcConfig, size, &bytesNeeded))
-#endif
 		{
 			if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 			{
