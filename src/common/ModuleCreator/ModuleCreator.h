@@ -22,7 +22,7 @@ private:
     bool CreateSCFile(std::string const& moduleName);
     bool CreateConfigFile(std::string const& moduleName);
     bool CreateCmakeFile(std::string const& moduleName);
-    
+
     std::string GetScriptsName(std::string str);
     std::string GetConfigFileName(std::string str);
     std::string GetScriptLoaderFileName(std::string str);

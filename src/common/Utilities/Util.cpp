@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 
+ * Copyright (C)
  */
 
 #include "Util.h"
@@ -28,4 +28,3 @@ bool StringEqualI(std::string_view a, std::string_view b)
 {
     return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2) { return std::tolower(c1) == std::tolower(c2); });
 }
-

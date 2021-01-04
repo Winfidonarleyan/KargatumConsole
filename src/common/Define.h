@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 
+ * Copyright (C)
  */
 
 #ifndef WH_DEFINE_H
@@ -21,7 +21,6 @@
 #    define DECLSPEC_DEPRECATED __declspec(deprecated)
 #  endif //DECLSPEC_DEPRECATED
 #endif // WH_PLATFORM
-
 
 #if WH_COMPILER == WH_COMPILER_GNU
 #  define ATTR_NORETURN __attribute__((__noreturn__))

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 
+# Copyright (C)
 #
 
 add_subdirectory(app)

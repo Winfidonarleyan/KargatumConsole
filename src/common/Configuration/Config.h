@@ -21,8 +21,8 @@ class WH_COMMON_API ConfigMgr
     ~ConfigMgr() = default;
 
 public:
-    static ConfigMgr* instance();    
-    
+    static ConfigMgr* instance();
+
     bool Load();
     bool Reload();
     void AddConfigFile(std::string const& file, bool enableDist = true);
@@ -33,7 +33,7 @@ public:
     float GetFloatDefault(std::string const& name, float def) const;
 
     std::set<std::string> GetKeysByString(std::string const& name);
-    
+
 private:
     std::unordered_map<std::string, bool> _configFiles;
     std::mutex _configLock;

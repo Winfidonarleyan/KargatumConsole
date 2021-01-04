@@ -26,7 +26,7 @@ CollectIncludeDirectories(
   PUBLIC_INCLUDES)
 
 target_include_directories(common
-  PUBLIC    
+  PUBLIC
     ${CMAKE_BINARY_DIR}
     ${PUBLIC_INCLUDES}
   PRIVATE

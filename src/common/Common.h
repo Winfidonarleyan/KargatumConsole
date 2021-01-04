@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 
+ * Copyright (C)
  */
 
 #ifndef _COMMON_H

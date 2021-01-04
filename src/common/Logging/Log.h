@@ -64,7 +64,7 @@ private:
 
     void Initialize();
     void InitSystemLogger();
-    void Clear();  
+    void Clear();
 };
 
 #define sLog Log::instance()

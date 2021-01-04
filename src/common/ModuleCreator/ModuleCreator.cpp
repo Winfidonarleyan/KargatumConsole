@@ -140,7 +140,7 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     LOG_DEBUG("> Try create cpp file - %s", SCFileName.c_str());
 
     std::string _text;
-    
+
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
@@ -288,7 +288,7 @@ std::string ModuleCreator::GetHeadText(bool isSpecal /*= false*/)
 
     if (!isSpecal)
     {
-        
+
         text += "/*\n";
         text += "* This file is part of the WarheadCore Project. See AUTHORS file for Copyright information\n";
         text += "*\n";
