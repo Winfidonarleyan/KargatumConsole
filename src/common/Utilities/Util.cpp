@@ -5,37 +5,27 @@
 #include "Util.h"
 #include "Common.h"
 
-Tokenizer::Tokenizer(const std::string &src, const char sep, uint32 vectorReserve /*= 0*/, bool keepEmptyStrings /*= true*/)
+std::vector<std::string_view> Warhead::Tokenize(std::string_view str, char sep, bool keepEmpty)
 {
-    m_str = new char[src.length() + 1];
-    memcpy(m_str, src.c_str(), src.length() + 1);
+    std::vector<std::string_view> tokens;
 
-    if (vectorReserve)
-        m_storage.reserve(vectorReserve);
-
-    char* posold = m_str;
-    char* posnew = m_str;
-
-    for (;;)
+    size_t start = 0;
+    for (size_t end = str.find(sep); end != std::string_view::npos; end = str.find(sep, start))
     {
-        if (*posnew == sep)
-        {
-            if (keepEmptyStrings || posold != posnew)
-                m_storage.push_back(posold);
+        if (keepEmpty || (start < end))
+            tokens.push_back(str.substr(start, end - start));
 
-            posold = posnew + 1;
-            *posnew = '\0';
-        }
-        else if (*posnew == '\0')
-        {
-            // Hack like, but the old code accepted these kind of broken strings,
-            // so changing it would break other things
-            if (posold != posnew)
-                m_storage.push_back(posold);
-
-            break;
-        }
-
-        ++posnew;
+        start = end + 1;
     }
+
+    if (keepEmpty || (start < str.length()))
+        tokens.push_back(str.substr(start));
+
+    return tokens;
 }
+
+bool StringEqualI(std::string_view a, std::string_view b)
+{
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2) { return std::tolower(c1) == std::tolower(c2); });
+}
+

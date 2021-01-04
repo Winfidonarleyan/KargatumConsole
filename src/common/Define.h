@@ -46,9 +46,9 @@
 #endif
 
 #ifdef KARGATUM_API_EXPORT_COMMON
-#  define K_COMMON_API K_API_EXPORT
+#  define WH_COMMON_API K_API_EXPORT
 #else
-#  define K_COMMON_API K_API_IMPORT
+#  define WH_COMMON_API K_API_IMPORT
 #endif
 
 #define UI64FMTD "%" PRIu64

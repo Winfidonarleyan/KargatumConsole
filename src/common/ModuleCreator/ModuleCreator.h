@@ -7,7 +7,7 @@
 
 #include "Common.h"
 
-class K_COMMON_API ModuleCreator
+class WH_COMMON_API ModuleCreator
 {
 public:
     static ModuleCreator* instance();
