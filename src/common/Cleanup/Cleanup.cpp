@@ -61,7 +61,7 @@ namespace
 
     void FillFileListRecursively(fs::path const& path, uint32 const depth)
     {
-        auto isNormalExtension = [](fs::path& path)
+        auto isNormalExtension = [](fs::path const& path)
         {
             for (auto const& _ext : _supportExtensions)
                 if (_ext == path)

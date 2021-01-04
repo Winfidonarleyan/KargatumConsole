@@ -56,7 +56,7 @@ public:
     template<typename Format, typename... Args>
     inline void outSys(LogLevel const level, Format&& fmt, Args&& ... args)
     {
-        outSys(level, Kargatum::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
+        outSys(level, Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
     }
 
 private:

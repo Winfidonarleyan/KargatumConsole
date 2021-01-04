@@ -6,6 +6,7 @@
 #define _MODULE_CREATOR_H_
 
 #include "Common.h"
+#include "StringFormat.h"
 
 class WH_COMMON_API ModuleCreator
 {
@@ -35,7 +36,7 @@ private:
     template<typename Format, typename... Args>
     inline void AddLineInText(std::string& text, Format&& fmt, Args&& ... args)
     {
-        AddLineInText(text, Kargatum::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
+        AddLineInText(text, Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
     }
 
     void CreateBaseArgs(std::string const& moduleName);
