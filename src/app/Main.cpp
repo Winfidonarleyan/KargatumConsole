@@ -19,6 +19,7 @@
 #include "Log.h"
 #include "ModuleCreator.h"
 #include "StringConvert.h"
+#include "StringFormat.h"
 #include "Cleanup.h"
 #include "Timer.h"
 #include "GitRevision.h"

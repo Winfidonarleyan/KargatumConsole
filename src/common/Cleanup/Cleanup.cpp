@@ -155,7 +155,7 @@ namespace
         LOG_INFO("# -- Found files (%u)", filesFoundCount);
         LOG_INFO("# -- Replace files (%u)", filesReplaceCount);
         LOG_INFO("# -- Replace lines (%u)", ReplaceWhitespace);
-        LOG_INFO("# -- Used time '%u' ms", GetMSTimeDiffToNow(startTimeMS));
+        LOG_INFO("# -- Used time '%s'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
         LOG_INFO("");
     }
 }
