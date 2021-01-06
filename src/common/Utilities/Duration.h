@@ -1,5 +1,5 @@
 /*
- * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,7 +20,10 @@
 
 #include <chrono>
 
-/// Milliseconds shorthand typedef.
+ /// Microseconds shorthand typedef.
+typedef std::chrono::microseconds Microseconds;
+
+ /// Milliseconds shorthand typedef.
 typedef std::chrono::milliseconds Milliseconds;
 
 /// Seconds shorthand typedef.
@@ -32,7 +35,16 @@ typedef std::chrono::minutes Minutes;
 /// Hours shorthand typedef.
 typedef std::chrono::hours Hours;
 
+/// time_point shorthand typedefs
+typedef std::chrono::steady_clock::time_point TimePoint;
+typedef std::chrono::system_clock::time_point SystemTimePoint;
+
 /// Makes std::chrono_literals globally available.
 using namespace std::chrono_literals;
+
+constexpr Hours operator""_days(unsigned long long days)
+{
+    return Hours(days * 24h);
+}
 
 #endif // _DURATION_H_
