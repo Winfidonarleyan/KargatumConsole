@@ -37,7 +37,7 @@ target_link_libraries(common
     warhead-core-interface
   PUBLIC
     fmt
-    Poco::Util)
+    Poco::Foundation)
 
 add_dependencies(common revision_data.h)
 
