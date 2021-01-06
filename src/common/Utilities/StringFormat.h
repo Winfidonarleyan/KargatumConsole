@@ -18,7 +18,8 @@
 #ifndef _STRING_FORMAT_H_
 #define _STRING_FORMAT_H_
 
-#include "fmt/printf.h"
+#include "Common.h"
+#include <fmt/printf.h>
 
 namespace Warhead
 {
@@ -48,6 +49,15 @@ namespace Warhead
     {
         return fmt.empty();
     }
+}
+
+namespace Warhead::String
+{
+    WH_COMMON_API void Trim(std::string& str);
+    WH_COMMON_API void TrimLeft(std::string& str);
+    WH_COMMON_API void TrimLeftInPlace(std::string& str);
+    WH_COMMON_API void TrimRight(std::string& str);
+    WH_COMMON_API void TrimRightInPlace(std::string& str);
 }
 
 #endif
