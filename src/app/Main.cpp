@@ -16,14 +16,20 @@
  */
 
 #include "Common.h"
-#include "Log.h"
 #include "ModuleCreator.h"
 #include "StringConvert.h"
 #include "StringFormat.h"
 #include "Cleanup.h"
 #include "Timer.h"
+#include "Log.h"
+#include "Util.h"
 #include "GitRevision.h"
 #include <iostream>
+#include <fstream>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
+#include "Poco/String.h"
 
 void Load()
 {
@@ -45,96 +51,15 @@ void SelectCreateModule(uint32 option)
     _Selection();
 }
 
-void SelectCleanup(bool needCleanPath = false)
+void SelectCleanup()
 {
-    // Clean path before enter
-    if (needCleanPath)
-        sClean->CleanPath();
-
     system("cls");
 
-    auto SendEmptyPath = []()
-    {
-        auto GetPathFromConsole = [](uint32 selectOption)
-        {
-            std::string whitespacePath;
-
-            switch (selectOption)
-            {
-                case 1:
-                    whitespacePath = "F:\\Git\\Warhead\\src\\server\\scripts\\Warhead";
-                    break;
-                case 2:
-                    whitespacePath = "F:\\Git\\Warhead\\src\\server\\scripts";
-                    break;
-                case 3:
-                    whitespacePath = "F:\\Git\\Warhead\\src\\server\\game";
-                    break;
-                case 4:
-                    whitespacePath = "F:\\Git\\Warhead\\src\\server";
-                    break;
-                case 5:
-                    whitespacePath = "F:\\Git\\Warhead\\src";
-                    break;
-                case 6:
-                    whitespacePath = "F:\\Git\\Warhead\\cmake";
-                    break;
-                case 8:
-                    LOG_INFO("-- Enter path:");
-                    std::getline(std::cin, whitespacePath);
-                    break;
-                default:
-                    SelectCleanup();
-                    break;
-            }
-
-            return whitespacePath;
-        };
-
-        LOG_FATAL(">> Path is empty! Please enter path.");
-        LOG_INFO("# -- Warhead");
-        LOG_INFO("1. ./src/server/scripts/Warhead");
-        LOG_INFO("2. ./src/server/scripts");
-        LOG_INFO("3. ./src/server/game");
-        LOG_INFO("4. ./src/server");
-        LOG_INFO("5. ./src");
-        LOG_INFO("6. ./cmake");
-        LOG_INFO("# --");
-        LOG_INFO("8. Enter path manually");
-        LOG_INFO("> Select:");
-
-        std::string selPathEnter;
-        std::getline(std::cin, selPathEnter);
-
-        if (!sClean->SetPath(GetPathFromConsole(*Warhead::StringTo<uint32>(selPathEnter))))
-            SelectCleanup();
-    };
-
-    std::string cleanPath = sClean->GetPath();
-    if (cleanPath.empty())
-        SendEmptyPath();
-
-    // Refresh info
-    cleanPath = sClean->GetPath();
-
-    if (!sClean->IsCorrectPath())
-        SelectCleanup();
-
-    system("cls");
-
-    uint32 filesFound = sClean->GetFoundFiles();
-
-    LOG_INFO(">> Entered path '%s'", cleanPath.c_str());
-    LOG_INFO(">> Files found '%u'", filesFound);
-    LOG_INFO("# --");
     LOG_INFO("# -- Select cleanup method:");
-    LOG_INFO("# 1. Replace whitespace");
+    LOG_INFO("# 1. Remove whitespace");
     LOG_INFO("# 2. Replace tabs");
+    LOG_INFO("# 3. Sort includes");
     LOG_INFO("# --");
-    LOG_INFO("# -- Select path functions:");
-    LOG_INFO("# 3. Replace path");
-    LOG_INFO("# --");
-    LOG_INFO("# -- Select other functions:");
     LOG_INFO("# 9. To main menu");
     LOG_INFO("# --");
     LOG_INFO("> Select:");
@@ -146,16 +71,13 @@ void SelectCleanup(bool needCleanPath = false)
     switch (cleanupMethod)
     {
         case 1:
-            sClean->CheckWhitespace();
+            sClean->RemoveWhitespace();
             break;
         case 2:
-            sClean->CheckTabs();
+            sClean->ReplaceTabs();
             break;
         case 3:
-            SelectCleanup(true);
-            break;
-        case 8:
-            SelectCleanup();
+            sClean->SortIncludes();
             break;
         case 9:
             _Selection();
@@ -189,7 +111,7 @@ void _Selection()
             SelectCreateModule(option);
             break;
         case 3:
-            SelectCleanup(true);
+            SelectCleanup();
             break;
         case 9:
             exit(0);
@@ -206,6 +128,6 @@ int main()
     {
         _Selection();
     }
-
+    
     return 0;
 }

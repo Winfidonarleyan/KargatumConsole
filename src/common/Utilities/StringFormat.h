@@ -53,11 +53,13 @@ namespace Warhead
 
 namespace Warhead::String
 {
-    WH_COMMON_API void Trim(std::string& str);
-    WH_COMMON_API void TrimLeft(std::string& str);
-    WH_COMMON_API void TrimLeftInPlace(std::string& str);
-    WH_COMMON_API void TrimRight(std::string& str);
-    WH_COMMON_API void TrimRightInPlace(std::string& str);
+    WH_COMMON_API std::string Trim(std::string& str);
+    WH_COMMON_API std::string TrimLeft(std::string& str);
+    WH_COMMON_API std::string TrimLeftInPlace(std::string& str);
+    WH_COMMON_API std::string TrimRight(std::string& str);
+    WH_COMMON_API std::string TrimRightInPlace(std::string& str);
+    WH_COMMON_API std::string Replace(std::string& str, std::string const& from, std::string const& to);
+    WH_COMMON_API std::string ReplaceInPlace(std::string& str, std::string const& from, std::string const& to);
 }
 
 #endif

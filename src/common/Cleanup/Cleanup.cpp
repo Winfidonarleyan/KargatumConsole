@@ -21,6 +21,7 @@
 #include "Timer.h"
 #include <Poco/RegularExpression.h>
 #include <Poco/Exception.h>
+#include "Poco/Mutex.h"
 #include <iostream>
 #include <filesystem>
 #include <vector>
@@ -33,11 +34,19 @@ namespace
 
     uint32 filesFoundCount = 0;
     uint32 filesReplaceCount = 0;
-    uint32 ReplaceWhitespace = 0;
-    constexpr uint32 MAX_DEPTH = 10;
+    uint32 ReplaceLines = 0;
     fs::path _path;
     std::vector<fs::path> _localeFileStorage;
-    std::vector<std::string> _supportExtensions = { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" };
+    std::vector<std::string> _supportExtensions;
+
+    bool IsNormalExtension(fs::path const& path)
+    {
+        for (auto const& _ext : _supportExtensions)
+            if (_ext == path)
+                return true;
+
+        return false;
+    }
 
     std::string GetFileText(std::string const& path)
     {
@@ -59,30 +68,21 @@ namespace
         return std::move(text);
     }
 
-    void FillFileListRecursively(fs::path const& path, uint32 const depth)
+    void FillFileList(fs::path const& path)
     {
-        auto isNormalExtension = [](fs::path const& path)
-        {
-            for (auto const& _ext : _supportExtensions)
-                if (_ext == path)
-                    return true;
-
-            return false;
-        };
-
         for (auto& dirEntry : fs::directory_iterator(path))
         {
             auto const& path = dirEntry.path();
 
-            if (fs::is_directory(path) && depth < MAX_DEPTH)
-                FillFileListRecursively(path, depth + 1);
-            else if (isNormalExtension(path.extension()))
+            if (fs::is_directory(path))
+                FillFileList(path);
+            else if (IsNormalExtension(path.extension()))
             {
                 _localeFileStorage.emplace_back(path.generic_string());
                 filesFoundCount++;
             }
         }
-    }
+    }        
 
     void ReplaceTabstoWhitespaceInFile(fs::path const& path)
     {
@@ -97,7 +97,7 @@ namespace
                 return;
 
             filesReplaceCount++;
-            ReplaceWhitespace += count;
+            ReplaceLines += count;
             LOG_INFO("%u. File (%s). Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), count);
         }
         catch (const Poco::Exception& e)
@@ -129,7 +129,7 @@ namespace
                 return;
 
             filesReplaceCount++;
-            ReplaceWhitespace += count;
+            ReplaceLines += count;
             LOG_INFO("%u. '%s'. Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), count);
         }
         catch (const Poco::Exception& e)
@@ -148,15 +148,112 @@ namespace
         file.close();
     }
 
+    void SortIncludesInFile(fs::path const& path)
+    {
+        std::string fileText = GetFileText(path.generic_string());
+        std::string origText = fileText;
+        std::vector<std::string> _includes;
+
+        auto SortPosIncludes = [&]()
+        {
+            if (_includes.empty() || _includes.size() == 1)
+                return;
+
+            std::string unsortIncludes = "";
+            std::string sortIncludes = "";
+
+            for (auto const& itr : _includes)
+                unsortIncludes += itr + "\n";
+
+            std::sort(_includes.begin(), _includes.end());
+
+            for (auto const& itr : _includes)
+                sortIncludes += itr + "\n";
+
+            // If uncludes same - no need replace file
+            if (unsortIncludes == sortIncludes)
+                return;
+
+            fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
+        };
+
+        bool isFirstInclude = false;
+        bool isFirst = false;
+        bool isEnd = false;
+
+        for (auto const& itr : Warhead::Tokenize(fileText, '\n', true))
+        {
+            try
+            {
+                std::string str{ itr };
+
+                auto found = str.find("#include");
+
+                if (!isEnd && found == std::string::npos)
+                {
+                    SortPosIncludes();
+
+                    isEnd = true;
+                    _includes.clear();
+                }
+
+                if (found != std::string::npos)
+                {
+                    if (isFirst)
+                        isFirst = true;
+
+                    if (isEnd)
+                        isEnd = false;
+
+                    if (!isFirstInclude)
+                        isFirstInclude = true;
+                    else
+                        _includes.emplace_back(str);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                LOG_FATAL(" > %s", e.what());
+            }
+        }
+
+        if (fileText == origText)
+            return;
+
+        std::ofstream file(path.c_str());
+        if (!file.is_open())
+        {
+            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            return;
+        }
+
+        file.write(fileText.c_str(), fileText.size());
+        file.close();
+
+        filesReplaceCount++;
+    }
+
     void GetStats(uint32 startTimeMS)
     {
         LOG_INFO("");
         LOG_INFO("> Cleanup: ended cleanup for '%s'", _path.generic_string().c_str());
         LOG_INFO("# -- Found files (%u)", filesFoundCount);
         LOG_INFO("# -- Replace files (%u)", filesReplaceCount);
-        LOG_INFO("# -- Replace lines (%u)", ReplaceWhitespace);
+
+        if (ReplaceLines)
+            LOG_INFO("# -- Replace lines (%u)", ReplaceLines);
+
         LOG_INFO("# -- Used time '%s'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
         LOG_INFO("");
+    }
+
+    void GetListFiles(std::initializer_list<std::string> supportExtensions)
+    {
+        _supportExtensions = supportExtensions;
+
+        FillFileList(_path);
+
+        LOG_INFO("> Cleanup: Found '%u' files", filesFoundCount);
     }
 }
 
@@ -166,16 +263,20 @@ Cleanup* Cleanup::instance()
     return &instance;
 }
 
-void Cleanup::CheckWhitespace()
+void Cleanup::RemoveWhitespace()
 {
     system("cls");
 
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (whitespace) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '%s'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
-    ReplaceWhitespace = 0;
+    ReplaceLines = 0;
 
     for (auto const& filePath : _localeFileStorage)
         RemoveWhitespaceInFile(filePath);
@@ -183,19 +284,44 @@ void Cleanup::CheckWhitespace()
     GetStats(ms);
 }
 
-void Cleanup::CheckTabs()
+void Cleanup::ReplaceTabs()
 {
     system("cls");
 
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (tabs) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (replace tabs) for '%s'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
-    ReplaceWhitespace = 0;
+    ReplaceLines = 0;
 
     for (auto const& filePath : _localeFileStorage)
         ReplaceTabstoWhitespaceInFile(filePath);
+
+    GetStats(ms);
+}
+
+void Cleanup::SortIncludes()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h" });
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start cleanup (sort includes) for '%s'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    for (auto const& filePath : _localeFileStorage)
+        SortIncludesInFile(filePath);
 
     GetStats(ms);
 }
@@ -211,10 +337,6 @@ bool Cleanup::SetPath(std::string const& path)
     }
 
     LOG_INFO("> Cleanup: Added path '%s'", path.c_str());
-
-    FillFileListRecursively(path, 1);
-
-    LOG_INFO("> Cleanup: Found '%u' files", filesFoundCount);
 
     _path = fs::path(path);
 
@@ -241,4 +363,74 @@ void Cleanup::CleanPath()
 bool Cleanup::IsCorrectPath()
 {
     return !_path.empty() && fs::is_directory(_path);
+}
+
+void Cleanup::SendPathInfo()
+{
+    CleanPath();
+
+    auto GetPathFromConsole = [&](uint32 selectOption)
+    {
+        std::string whitespacePath;
+
+        switch (selectOption)
+        {
+            case 1:
+                whitespacePath = "F:\\Git\\Warhead\\src\\server\\scripts\\Warhead";
+                break;
+            case 2:
+                whitespacePath = "F:\\Git\\Warhead\\src\\server\\scripts";
+                break;
+            case 3:
+                whitespacePath = "F:\\Git\\Warhead\\src\\server\\game";
+                break;
+            case 4:
+                whitespacePath = "F:\\Git\\Warhead\\src\\server";
+                break;
+            case 5:
+                whitespacePath = "F:\\Git\\Warhead\\src";
+                break;
+            case 6:
+                whitespacePath = "F:\\Git\\Warhead\\cmake";
+                break;
+            case 8:
+                LOG_INFO("-- Enter path:");
+                std::getline(std::cin, whitespacePath);
+                break;
+            default:
+                SendPathInfo();
+                break;
+        }
+
+        return whitespacePath;
+    };
+
+    std::string pathInfo = GetPath();
+    if (pathInfo.empty())
+    {
+        LOG_FATAL(">> Path is empty! Please enter path.");
+        LOG_INFO("# -- Warhead");
+        LOG_INFO("1. ./src/server/scripts/Warhead");
+        LOG_INFO("2. ./src/server/scripts");
+        LOG_INFO("3. ./src/server/game");
+        LOG_INFO("4. ./src/server");
+        LOG_INFO("5. ./src");
+        LOG_INFO("6. ./cmake");
+        LOG_INFO("# --");
+        LOG_INFO("8. Enter path manually");
+        LOG_INFO("> Select:");
+
+        std::string selPathEnter;
+        std::getline(std::cin, selPathEnter);
+
+        system("cls");
+
+        if (!SetPath(GetPathFromConsole(*Warhead::StringTo<uint32>(selPathEnter))))
+            SendPathInfo();
+    }
+    else
+        LOG_INFO(">> Entered path '%s'", pathInfo.c_str());
+
+    if (!IsCorrectPath())
+        SendPathInfo();
 }

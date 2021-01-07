@@ -18,27 +18,37 @@
 #include "StringFormat.h"
 #include <Poco/String.h>
 
-void Warhead::String::Trim(std::string& str)
+std::string Warhead::String::Trim(std::string& str)
 {
-    Poco::trim(str);
+    return Poco::trim(str);
 }
 
-void Warhead::String::TrimLeft(std::string& str)
+std::string Warhead::String::TrimLeft(std::string& str)
 {
-    Poco::trimLeft(str);
+    return Poco::trimLeft(str);
 }
 
-void Warhead::String::TrimLeftInPlace(std::string& str)
+std::string Warhead::String::TrimLeftInPlace(std::string& str)
 {
-    Poco::trimLeftInPlace(str);
+    return Poco::trimLeftInPlace(str);
 }
 
-void Warhead::String::TrimRight(std::string& str)
+std::string Warhead::String::TrimRight(std::string& str)
 {
-    Poco::trimRight(str);
+    return Poco::trimRight(str);
 }
 
-void Warhead::String::TrimRightInPlace(std::string& str)
+std::string Warhead::String::TrimRightInPlace(std::string& str)
 {
-    Poco::trimRightInPlace(str);
+    return Poco::trimRightInPlace(str);
+}
+
+std::string Warhead::String::Replace(std::string& str, std::string const& from, std::string const& to)
+{
+    return Poco::replace(str, from, to);
+}
+
+std::string Warhead::String::ReplaceInPlace(std::string& str, std::string const& from, std::string const& to)
+{
+    return Poco::replaceInPlace(str, from, to);
 }

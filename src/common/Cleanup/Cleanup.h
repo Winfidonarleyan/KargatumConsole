@@ -26,8 +26,11 @@ class WH_COMMON_API Cleanup
 public:
     static Cleanup* instance();
 
-    void CheckWhitespace();
-    void CheckTabs();
+    void RemoveWhitespace();
+    void ReplaceTabs();
+    void SortIncludes();
+
+    void SendPathInfo();
 
     bool SetPath(std::string const& path);
     void CleanPath();

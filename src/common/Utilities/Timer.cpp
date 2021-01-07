@@ -141,9 +141,7 @@ WH_COMMON_API std::string Warhead::Time::ToTimeString<Microseconds>(uint64 durat
     if (timeOutput == TimeOutput::Milliseconds)
         stringTime = ss.str();
 
-    Warhead::String::TrimRightInPlace(stringTime);
-
-    return stringTime;
+    return Warhead::String::TrimRightInPlace(stringTime);
 }
 
 template<>
