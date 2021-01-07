@@ -58,7 +58,8 @@ void SelectCleanup()
     LOG_INFO("# -- Select cleanup method:");
     LOG_INFO("# 1. Remove whitespace");
     LOG_INFO("# 2. Replace tabs");
-    LOG_INFO("# 3. Sort includes");
+    LOG_INFO("# 3. Sort includes (with check first include)");
+    LOG_INFO("# 4. Sort includes (without check first include");
     LOG_INFO("# --");
     LOG_INFO("# 9. To main menu");
     LOG_INFO("# --");
@@ -78,6 +79,9 @@ void SelectCleanup()
             break;
         case 3:
             sClean->SortIncludes();
+            break;
+        case 4:
+            sClean->SortIncludes(false);
             break;
         case 9:
             _Selection();

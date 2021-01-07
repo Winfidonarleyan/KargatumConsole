@@ -27,6 +27,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 namespace
 {
@@ -36,8 +37,12 @@ namespace
     uint32 filesReplaceCount = 0;
     uint32 ReplaceLines = 0;
     fs::path _path;
-    std::vector<fs::path> _localeFileStorage;
+    std::vector<fs::path> _localeFileStorage;    
     std::vector<std::string> _supportExtensions;
+
+    // Sort includes
+    std::unordered_map<std::string, std::string> _textStore;
+    bool enbaleCheckFirstInclude = true;
 
     bool IsNormalExtension(fs::path const& path)
     {
@@ -48,12 +53,12 @@ namespace
         return false;
     }
 
-    std::string GetFileText(std::string const& path)
+    std::string GetFileText(fs::path const& path)
     {
         std::ifstream in(path);
         if (!in.is_open())
         {
-            LOG_FATAL("> Failed to open file (%s)", path.c_str());
+            LOG_FATAL("> Failed to open file (%s)", path.generic_string().c_str());
             return "";
         }
 
@@ -65,7 +70,7 @@ namespace
         }();
 
         in.close();
-        return std::move(text);
+        return text;
     }
 
     void FillFileList(fs::path const& path)
@@ -86,7 +91,7 @@ namespace
 
     void ReplaceTabstoWhitespaceInFile(fs::path const& path)
     {
-        std::string text = GetFileText(path.generic_string());
+        std::string text = GetFileText(path);
 
         try
         {
@@ -118,7 +123,7 @@ namespace
 
     void RemoveWhitespaceInFile(fs::path const& path)
     {
-        std::string text = GetFileText(path.generic_string());
+        std::string text = GetFileText(path);
 
         try
         {
@@ -153,29 +158,7 @@ namespace
         std::string fileText = GetFileText(path.generic_string());
         std::string origText = fileText;
         std::vector<std::string> _includes;
-
-        auto SortPosIncludes = [&]()
-        {
-            if (_includes.empty() || _includes.size() == 1)
-                return;
-
-            std::string unsortIncludes = "";
-            std::string sortIncludes = "";
-
-            for (auto const& itr : _includes)
-                unsortIncludes += itr + "\n";
-
-            std::sort(_includes.begin(), _includes.end());
-
-            for (auto const& itr : _includes)
-                sortIncludes += itr + "\n";
-
-            // If uncludes same - no need replace file
-            if (unsortIncludes == sortIncludes)
-                return;
-
-            fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
-        };
+        std::unordered_map<std::string, std::string> _toReplace;
 
         bool isFirstInclude = false;
         bool isFirst = false;
@@ -183,42 +166,65 @@ namespace
 
         for (auto const& itr : Warhead::Tokenize(fileText, '\n', true))
         {
-            try
+            std::string str{ itr };
+
+            auto found = str.find("#include");
+
+            if (!isEnd && found == std::string::npos)
             {
-                std::string str{ itr };
+                isEnd = true;
 
-                auto found = str.find("#include");
+                if (_includes.empty() || _includes.size() == 1)
+                    continue;
 
-                if (!isEnd && found == std::string::npos)
+                std::string unsortIncludes = "";
+                std::string sortIncludes = "";
+
+                for (auto const itr : _includes)
+                    unsortIncludes += itr + "\n";
+
+                std::sort(_includes.begin(), _includes.end());
+
+                for (auto const itr : _includes)
+                    sortIncludes += itr + "\n";
+
+                // If uncludes same - no need replace
+                if (unsortIncludes == sortIncludes)
+                    continue;
+
+                _toReplace.emplace(unsortIncludes, sortIncludes);
+
+                _includes.clear();
+            }
+
+            if (found != std::string::npos)
+            {
+                if (isFirst)
+                    isFirst = true;
+
+                if (isEnd)
+                    isEnd = false;
+
+                if (!isFirstInclude)
                 {
-                    SortPosIncludes();
+                    isFirstInclude = true;
 
-                    isEnd = true;
-                    _includes.clear();
-                }
-
-                if (found != std::string::npos)
-                {
-                    if (isFirst)
-                        isFirst = true;
-
-                    if (isEnd)
-                        isEnd = false;
-
-                    if (!isFirstInclude)
-                        isFirstInclude = true;
-                    else
+                    auto isDefaultInclude = str.find("#include \"");
+                    if (isDefaultInclude == std::string::npos || !enbaleCheckFirstInclude)
                         _includes.emplace_back(str);
                 }
-            }
-            catch (const std::exception& e)
-            {
-                LOG_FATAL(" > %s", e.what());
+                else
+                    _includes.emplace_back(str);
             }
         }
 
+        for (auto const& [unsortIncludes, sortIncludes] : _toReplace)
+            fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
+
         if (fileText == origText)
             return;
+
+        filesReplaceCount++;
 
         std::ofstream file(path.c_str());
         if (!file.is_open())
@@ -228,9 +234,7 @@ namespace
         }
 
         file.write(fileText.c_str(), fileText.size());
-        file.close();
-
-        filesReplaceCount++;
+        file.close();       
     }
 
     void GetStats(uint32 startTimeMS)
@@ -271,6 +275,14 @@ void Cleanup::RemoveWhitespace()
 
     GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
 
+    LOG_INFO("> Start cleanup? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
     uint32 ms = getMSTime();
 
     LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '%s'", _path.generic_string().c_str());
@@ -292,6 +304,14 @@ void Cleanup::ReplaceTabs()
 
     GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
 
+    LOG_INFO("> Start cleanup? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
     uint32 ms = getMSTime();
 
     LOG_INFO("> Cleanup: Start cleanup (replace tabs) for '%s'", _path.generic_string().c_str());
@@ -305,13 +325,26 @@ void Cleanup::ReplaceTabs()
     GetStats(ms);
 }
 
-void Cleanup::SortIncludes()
+void Cleanup::SortIncludes(bool needCheckFirstInclude /*= false*/)
 {
     system("cls");
 
     SendPathInfo();
 
     GetListFiles({ ".cpp", ".h" });
+
+    enbaleCheckFirstInclude = needCheckFirstInclude;
+
+    LOG_INFO("# -- Sort Includes options: ");
+    LOG_INFO("1. Skip check first include - '%s'", enbaleCheckFirstInclude ? "true" : "false");
+    LOG_INFO("# --");
+    LOG_INFO("> Start cleanup? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
 
     uint32 ms = getMSTime();
 
