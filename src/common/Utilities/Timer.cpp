@@ -110,7 +110,7 @@ WH_COMMON_API std::string Warhead::Time::ToTimeString<Microseconds>(uint64 durat
                 ss << "<Unknown time format>";
         }
     };
-        
+
     if (days || timeOutput == TimeOutput::Days)
         GetStringFormat(days, "d ", " Day ", " Days ");
 

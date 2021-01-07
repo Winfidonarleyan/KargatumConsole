@@ -132,6 +132,6 @@ int main()
     {
         _Selection();
     }
-    
+
     return 0;
 }

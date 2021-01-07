@@ -37,7 +37,7 @@ namespace
     uint32 filesReplaceCount = 0;
     uint32 ReplaceLines = 0;
     fs::path _path;
-    std::vector<fs::path> _localeFileStorage;    
+    std::vector<fs::path> _localeFileStorage;
     std::vector<std::string> _supportExtensions;
 
     // Sort includes
@@ -87,7 +87,7 @@ namespace
                 filesFoundCount++;
             }
         }
-    }        
+    }
 
     void ReplaceTabstoWhitespaceInFile(fs::path const& path)
     {
@@ -234,7 +234,7 @@ namespace
         }
 
         file.write(fileText.c_str(), fileText.size());
-        file.close();       
+        file.close();
     }
 
     void GetStats(uint32 startTimeMS)
