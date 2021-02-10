@@ -1,0 +1,23 @@
+# List of AUTHORS who contributed over time to the WarheadCore project
+
+## Warning
+The code of WarheadCore is shipped as it is without any form of warranty,
+and - except for third party libraries - licensed under the GPL 2.0,
+which you can read from the file "COPYING"
+
+## Point of current development
+The project is currently developed under https://github.com/WarheadCore
+
+## History of development
+Development of this project dates back to 2004, and was developed under various umbrellas over time:
+* WarheadCore, 2020-2021, located at https://github.com/WarheadCore
+
+## Authorship of the code
+Authorship is assigned for each commit within the git history, which is stored in these git repositories:
+* https://github.com/WarheadCore
+
+## Exceptions with third party libraries
+The third party libraries have their own way of addressing authorship, and the authorship of commits importing/ updating
+a third party library reflects who did the importing instead of who wrote the code within the commit.
+
+The Authors of third party libraries are not explicitly mentioned, and usually are possible to obtain from the files belonging to the third party libraries.
