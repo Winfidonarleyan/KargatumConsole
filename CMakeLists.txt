@@ -19,7 +19,7 @@ message(STATUS "CMake version: ${CMAKE_VERSION}")
 cmake_policy(SET CMP0005 NEW)
 
 # Set projectname (must be done AFTER setting configurationtypes)
-project(KargatumConsole)
+project(WarheadApps)
 
 # add this options before PROJECT keyword
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
@@ -46,10 +46,9 @@ include(CheckPlatform)
 include(GroupSources)
 include(AutoCollect)
 include(PocoMacros)
+include(GenerateApp)
 
-# find_package(PCHSupport)
 find_package(Git)
-# find_package(MySQL REQUIRED)
 
 # Find revision ID and hash of the sourcetree
 include(cmake/genrev.cmake)
@@ -63,5 +62,5 @@ find_package(Threads REQUIRED)
 # add dependencies
 add_subdirectory(dep)
 
-# add core sources
+# add sources
 add_subdirectory(src)

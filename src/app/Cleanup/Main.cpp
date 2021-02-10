@@ -16,52 +16,28 @@
  */
 
 #include "Common.h"
-#include "ModuleCreator.h"
-#include "StringConvert.h"
-#include "StringFormat.h"
-#include "Cleanup.h"
-#include "Timer.h"
 #include "Log.h"
-#include "Util.h"
+#include "Cleanup.h"
+#include "StringConvert.h"
 #include "GitRevision.h"
 #include <iostream>
-#include <fstream>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
-#include "Poco/String.h"
 
 void Load()
 {
     sLog->SetLogLevel(LOG_LEVEL_DEBUG);
 }
 
-void _Selection();
-
-void SelectCreateModule(uint32 option)
-{
-    system("cls");
-    LOG_INFO("-- Enter %sCore module name:", option == 1 ? "Warhead" : "Azeroth");
-
-    std::string moduleName;
-    std::getline(std::cin, moduleName);
-
-    sModule->CreateModule(moduleName, option == 1 ? true : false);
-
-    _Selection();
-}
-
 void SelectCleanup()
 {
-    system("cls");
-
+    LOG_INFO("%s", GitRevision::GetFullVersion());
+    LOG_INFO("");
     LOG_INFO("# -- Select cleanup method:");
     LOG_INFO("# 1. Remove whitespace");
     LOG_INFO("# 2. Replace tabs");
     LOG_INFO("# 3. Sort includes (with check first include)");
     LOG_INFO("# 4. Sort includes (without check first include");
     LOG_INFO("# --");
-    LOG_INFO("# 9. To main menu");
+    LOG_INFO("# 9. Exit");
     LOG_INFO("# --");
     LOG_INFO("> Select:");
 
@@ -84,42 +60,10 @@ void SelectCleanup()
             sClean->SortIncludes(false);
             break;
         case 9:
-            _Selection();
-            break;
-        default:
-            SelectCleanup();
-            break;
-    }
-}
-
-void _Selection()
-{
-    LOG_INFO("%s", GitRevision::GetFullVersion());
-    LOG_INFO("");
-    LOG_INFO("# -- Select option:");
-    LOG_INFO("1. Create module WarheadCore");
-    LOG_INFO("2. Create module AzerothCore");
-    LOG_INFO("3. Cleanup");
-    LOG_INFO("9. Exit");
-    LOG_INFO("# --");
-    LOG_INFO("> Enter select:");
-
-    std::string selection;
-    std::getline(std::cin, selection);
-    uint32 option = *Warhead::StringTo<uint32>(selection);
-
-    switch (option)
-    {
-        case 1:
-        case 2:
-            SelectCreateModule(option);
-            break;
-        case 3:
-            SelectCleanup();
-            break;
-        case 9:
             exit(0);
+            break;
         default:
+            SelectCleanup();
             break;
     }
 }
@@ -130,7 +74,7 @@ int main()
 
     while (true)
     {
-        _Selection();
+        SelectCleanup();
     }
 
     return 0;

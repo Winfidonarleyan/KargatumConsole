@@ -17,6 +17,8 @@
 
 #include "StringFormat.h"
 #include <Poco/String.h>
+#include <Poco/RegularExpression.h>
+#include <Poco/Exception.h>
 
 std::string Warhead::String::Trim(std::string& str)
 {
@@ -51,4 +53,10 @@ std::string Warhead::String::Replace(std::string& str, std::string const& from, 
 std::string Warhead::String::ReplaceInPlace(std::string& str, std::string const& from, std::string const& to)
 {
     return Poco::replaceInPlace(str, from, to);
+}
+
+uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& replacementFrom, const std::string& replacementTo)
+{
+    Poco::RegularExpression re(replacementFrom, Poco::RegularExpression::RE_MULTILINE);
+    return re.subst(subject, replacementTo, Poco::RegularExpression::RE_GLOBAL);
 }

@@ -19,7 +19,6 @@
 #define _CLEANUP_H_
 
 #include "Common.h"
-#include <string_view>
 
 class WH_COMMON_API Cleanup
 {

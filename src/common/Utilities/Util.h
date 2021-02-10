@@ -38,4 +38,6 @@ namespace Warhead
 
 WH_COMMON_API bool StringEqualI(std::string_view str1, std::string_view str2);
 
+WH_COMMON_API std::string GetFileText(std::string const& path);
+
 #endif

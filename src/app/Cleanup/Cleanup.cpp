@@ -53,26 +53,6 @@ namespace
         return false;
     }
 
-    std::string GetFileText(fs::path const& path)
-    {
-        std::ifstream in(path);
-        if (!in.is_open())
-        {
-            LOG_FATAL("> Failed to open file (%s)", path.generic_string().c_str());
-            return "";
-        }
-
-        auto text = [&in]
-        {
-            std::ostringstream ss;
-            ss << in.rdbuf();
-            return ss.str();
-        }();
-
-        in.close();
-        return text;
-    }
-
     void FillFileList(fs::path const& path)
     {
         for (auto& dirEntry : fs::directory_iterator(path))
@@ -91,7 +71,7 @@ namespace
 
     void ReplaceTabstoWhitespaceInFile(fs::path const& path)
     {
-        std::string text = GetFileText(path);
+        std::string text = GetFileText(path.generic_string());
 
         try
         {
@@ -123,7 +103,7 @@ namespace
 
     void RemoveWhitespaceInFile(fs::path const& path)
     {
-        std::string text = GetFileText(path);
+        std::string text = GetFileText(path.generic_string());
 
         try
         {

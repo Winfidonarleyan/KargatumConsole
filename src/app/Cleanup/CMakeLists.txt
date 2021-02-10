@@ -10,6 +10,4 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 
-add_subdirectory(app)
-add_subdirectory(genrev)
-add_subdirectory(common)
+GenerateApp(${CMAKE_CURRENT_SOURCE_DIR} "Cleanup")
