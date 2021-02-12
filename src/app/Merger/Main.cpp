@@ -1,5 +1,5 @@
 /*
- * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,26 +15,23 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _MERGER_H_
-#define _MERGER_H_
-
 #include "Common.h"
+#include "Log.h"
+#include "Merger.h"
+#include "StringConvert.h"
+#include "GitRevision.h"
+#include <iostream>
 
-class WH_COMMON_API Merger
+void Load()
 {
-public:
-    static Merger* instance();
+    sLog->SetLogLevel(LOG_LEVEL_DEBUG);
+}
 
-    void Init();
+int main()
+{
+    Load();
 
-    void SendPathInfo();
-    bool SetPath(std::string const& path);
-    void CleanPath();
-    std::string const GetPath();
-    bool IsCorrectPath();
-    uint32 GetFoundFiles();
-};
+    sMerger->Init();
 
-#define sMerger Merger::instance()
-
-#endif // _MERGER_H_
+    return 0;
+}

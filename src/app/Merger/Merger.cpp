@@ -1,5 +1,5 @@
 /*
- * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -174,11 +174,11 @@ bool Merger::SetPath(std::string const& path)
 
     if (!fs::is_directory(path))
     {
-        LOG_FATAL("> Cleanup: Path '%s' in not directory!", path.c_str());
+        LOG_FATAL("> Merger: Path '%s' in not directory!", path.c_str());
         return false;
     }
 
-    LOG_INFO("> Cleanup: Added path '%s'", path.c_str());
+    LOG_INFO("> Merger: Added path '%s'", path.c_str());
 
     _path = fs::path(path);
 

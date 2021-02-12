@@ -16,7 +16,7 @@ public:
     void CreateModule(std::string const& moduleName, bool isWarheadModule = true);
 
 private:
-    bool CopyBaseModuleFiles();
+    bool CreateBaseFiles();
     bool CreateScriptLoader(std::string const& moduleName);
     bool CreateClassFiles(std::string const& moduleName);
     bool CreateSCFile(std::string const& moduleName);
@@ -39,7 +39,7 @@ private:
         AddLineInText(text, Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
     }
 
-    void CreateBaseArgs(std::string const& moduleName);
+    bool CreateBaseArgs(std::string const& moduleName);
     void AddLineInText(std::string& text, std::string&& message);
     bool AddTextInFile(std::string const& path, std::string const& text);
 

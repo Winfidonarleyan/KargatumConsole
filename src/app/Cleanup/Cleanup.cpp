@@ -21,7 +21,6 @@
 #include "Timer.h"
 #include <Poco/RegularExpression.h>
 #include <Poco/Exception.h>
-#include "Poco/Mutex.h"
 #include <iostream>
 #include <filesystem>
 #include <vector>

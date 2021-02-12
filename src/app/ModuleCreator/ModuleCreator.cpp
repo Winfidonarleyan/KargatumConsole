@@ -12,14 +12,55 @@
 #include <fstream>
 #include <iostream>
 
+namespace
+{
+    void CheckBaseDir()
+    {
+        Poco::File dir("mods-created");
+
+        if (dir.exists())
+            return;
+
+        try
+        {
+            dir.createDirectory();
+        }
+        catch (const Poco::Exception& e)
+        {
+            LOG_FATAL("> Failed create directory: %s", e.displayText().c_str());
+        }
+    }
+
+    bool MakeDirForNewModule(std::string const& path)
+    {
+        Poco::File dir(path);
+
+        if (dir.exists())
+            return false;
+
+        try
+        {
+            dir.createDirectories();
+        }
+        catch (const Poco::Exception& e)
+        {
+            LOG_FATAL("> Failed create directory: %s", e.displayText().c_str());
+        }
+
+        return true;
+    }
+}
+
 ModuleCreator* ModuleCreator::instance()
 {
     static ModuleCreator instance;
     return &instance;
 }
 
-void ModuleCreator::CreateBaseArgs(std::string const& moduleName)
+bool ModuleCreator::CreateBaseArgs(std::string const& moduleName)
 {
+    ::CheckBaseDir();
+
     scriptName = GetScriptsName(moduleName);
     correctModuleName = GetCorrectModuleName(moduleName);
     pathToModule = "mods-created/" + correctModuleName;
@@ -34,6 +75,14 @@ void ModuleCreator::CreateBaseArgs(std::string const& moduleName)
     LOG_DEBUG("> pathToModuleSrc - %s", pathToModuleSrc.c_str());
     LOG_DEBUG("> defineText - %s", defineText.c_str());
     LOG_DEBUG("");
+
+    if (!MakeDirForNewModule(pathToModule))
+    {
+        LOG_FATAL("> Module '%s' is exist!", correctModuleName.c_str());
+        return false;
+    }
+
+    return true;
 }
 
 void ModuleCreator::AddLineInText(std::string& text, std::string&& message)
@@ -235,20 +284,202 @@ bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
     return true;
 }
 
-bool ModuleCreator::CopyBaseModuleFiles()
+bool ModuleCreator::CreateBaseFiles()
 {
-    try
-    {
-        Poco::File _file("mod-based");
-        _file.copyTo(pathToModule);
-    }
-    catch (const Poco::Exception& e)
-    {
-        LOG_FATAL("> Failed copy modules base files - %s", e.message());
-        return false;
-    }
+    // .editorconfig
+    std::string _text = "[*]\n"
+                        "charset = utf-8\n"
+                        "indent_style = space\n"
+                        "indent_size = 4\n"
+                        "tab_width = 4\n"
+                        "insert_final_newline = true\n"
+                        "trim_trailing_whitespace = true\n"
+                        "max_line_length = 80\n";
 
-    LOG_INFO("> Base module files moved sucessfull");
+    if (!AddTextInFile(pathToModule + "/" + ".editorconfig", _text))
+        return false;
+
+    // .gitignore
+    _text = "!.gitignore\n"
+            "\n"
+            "#\n"
+            "#Generic\n"
+            "#"
+            "\n"
+            ".directory\n"
+            ".mailmap\n"
+            "* .orig\n"
+            "* .rej\n"
+            "* .*~\n"
+            ".hg /\n"
+            "*.kdev *\n"
+            ".DS_Store\n"
+            "CMakeLists.txt.user\n"
+            "* .bak\n"
+            "* .patch\n"
+            "* .diff\n"
+            "* .REMOTE.*\n"
+            "* .BACKUP.*\n"
+            "* .BASE.*\n"
+            "* .LOCAL.*\n"
+            "\n"
+            "#\n"
+            "# IDE & other softwares\n"
+            "#\n"
+            "/ .settings/\n"
+            "/.externalToolBuilders/*\n"
+            "# exclude in all levels\n"
+            "nbproject/\n"
+            ".sync.ffs_db\n"
+            "*.kate-swp\n"
+            "\n"
+            "#\n"
+            "# Eclipse\n"
+            "#\n"
+            "*.pydevproject\n"
+            ".metadata\n"
+            ".gradle\n"
+            "tmp/\n"
+            "*.tmp\n"
+            "*.swp\n"
+            "*~.nib\n"
+            "local.properties\n"
+            ".settings/\n"
+            ".loadpath\n"
+            ".project\n"
+            ".cproject\n";
+
+    if (!AddTextInFile(pathToModule + "/" + ".gitignore", _text))
+        return false;
+
+    // .gitattributes
+    _text = "## AUTO-DETECT\n"
+            "##   Handle line endings automatically for files detected as\n"
+            "##   text and leave all files detected as binary untouched.\n"
+            "##   This will handle all files NOT defined below.\n"
+            "* text = auto eol = lf\n"
+            "\n"
+            "# Text\n"
+            "* .conf text\n"
+            "* .conf.dist text\n"
+            "* .cmake text\n"
+            "\n"
+            "## Scripts\n"
+            "* .sh text\n"
+            "* .fish text\n"
+            "* .lua text\n"
+            "\n"
+            "## SQL\n"
+            "* .sql text\n"
+            "\n"
+            "## C++\n"
+            "* .c text\n"
+            "* .cc text\n"
+            "* .cxx text\n"
+            "* .cpp text\n"
+            "* .c++ text\n"
+            "* .hpp text\n"
+            "* .h text\n"
+            "* .h++ text\n"
+            "* .hh text\n"
+            "\n"
+            "\n"
+            "## For documentation\n"
+            "\n"
+            "# Documents\n"
+            "* .doc	 diff = astextplain\n"
+            "* .DOC	 diff = astextplain\n"
+            "* .docx diff = astextplain\n"
+            "* .DOCX diff = astextplain\n"
+            "* .dot  diff = astextplain\n"
+            "* .DOT  diff = astextplain\n"
+            "* .pdf  diff = astextplain\n"
+            "* .PDF	 diff = astextplain\n"
+            "* .rtf	 diff = astextplain\n"
+            "* .RTF	 diff = astextplain\n"
+            "\n"
+            "## DOCUMENTATION\n"
+            "* .markdown   text\n"
+            "* .md         text\n"
+            "* .mdwn       text\n"
+            "* .mdown      text\n"
+            "* .mkd        text\n"
+            "* .mkdn       text\n"
+            "* .mdtxt      text\n"
+            "* .mdtext     text\n"
+            "* .txt        text\n"
+            "AUTHORS      text\n"
+            "CHANGELOG    text\n"
+            "CHANGES      text\n"
+            "CONTRIBUTING text\n"
+            "COPYING      text\n"
+            "copyright    text\n"
+            "* COPYRIGHT * text\n"
+            "INSTALL      text\n"
+            "license      text\n"
+            "LICENSE      text\n"
+            "NEWS         text\n"
+            "readme       text\n"
+            "* README * text\n"
+            "TODO         text\n"
+            "\n"
+            "## GRAPHICS\n"
+            "* .ai   binary\n"
+            "* .bmp  binary\n"
+            "* .eps  binary\n"
+            "* .gif  binary\n"
+            "* .ico  binary\n"
+            "* .jng  binary\n"
+            "* .jp2  binary\n"
+            "* .jpg  binary\n"
+            "* .jpeg binary\n"
+            "* .jpx  binary\n"
+            "* .jxr  binary\n"
+            "* .pdf  binary\n"
+            "* .png  binary\n"
+            "* .psb  binary\n"
+            "* .psd  binary\n"
+            "* .svg  text\n"
+            "* .svgz binary\n"
+            "* .tif  binary\n"
+            "* .tiff binary\n"
+            "* .wbmp binary\n"
+            "* .webp binary\n"
+            "\n"
+            "\n"
+            "## ARCHIVES\n"
+            "* .7z  binary\n"
+            "* .gz  binary\n"
+            "* .jar binary\n"
+            "* .rar binary\n"
+            "* .tar binary\n"
+            "* .zip binary\n"
+            "\n"
+            "## EXECUTABLES\n"
+            "* .exe binary\n"
+            "* .pyc binary\n";
+
+    if (!AddTextInFile(pathToModule + "/" + ".gitattributes", _text))
+        return false;
+
+    auto CreateModuleDir = [&](std::string const& dirName)
+    {
+        Poco::File _file(pathToModule + "/" + dirName);
+
+        try
+        {
+            _file.createDirectory();
+        }
+        catch (const Poco::Exception& e)
+        {
+            LOG_FATAL("> Failed create directory: %s", e.displayText().c_str());
+        }
+    };
+
+    CreateModuleDir("conf");
+    CreateModuleDir("src");
+
+    LOG_INFO("> Base module files created sucessfull");
 
     return true;
 }
@@ -257,13 +488,14 @@ void ModuleCreator::CreateModule(std::string const& moduleName, bool isWarheadMo
 {
     _IsWarheadModule = isWarheadModule;
 
-    CreateBaseArgs(moduleName);
+    if (!CreateBaseArgs(moduleName))
+        return;
 
     LOG_INFO("Creating %sCore module - %s", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName.c_str());
     LOG_INFO("> Move base module files to new module - %s", correctModuleName.c_str());
 
-    // #1. Cope base files
-    CopyBaseModuleFiles();
+    // #1. Create base files
+    CreateBaseFiles();
 
     // #2. Create script_loader.cpp
     CreateScriptLoader(moduleName);
