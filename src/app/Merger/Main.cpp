@@ -31,7 +31,10 @@ int main()
 {
     Load();
 
-    sMerger->Init();
+    while (true)
+    {
+        sMerger->Init();
+    }
 
     return 0;
 }

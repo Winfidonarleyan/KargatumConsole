@@ -125,8 +125,6 @@ Merger* Merger::instance()
 
 void Merger::Init()
 {
-    system("cls");
-
     SendPathInfo();
 
     GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
