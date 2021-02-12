@@ -7,9 +7,9 @@
 
 #include "CompilerDefs.h"
 
-#include <cstddef>
 #include <cinttypes>
 #include <climits>
+#include <cstddef>
 
 #if WH_PLATFORM == WH_PLATFORM_WINDOWS
 #  define WH_PATH_MAX 260

@@ -20,13 +20,13 @@
 #include "StringConvert.h"
 #include "Timer.h"
 #include "Util.h"
-#include <Poco/RegularExpression.h>
 #include <Poco/Exception.h>
-#include <iostream>
+#include <Poco/RegularExpression.h>
 #include <filesystem>
-#include <vector>
 #include <fstream>
+#include <iostream>
 #include <sstream>
+#include <vector>
 
 namespace
 {

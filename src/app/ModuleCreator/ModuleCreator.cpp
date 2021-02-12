@@ -5,9 +5,9 @@
 
 #include "ModuleCreator.h"
 #include "Log.h"
-#include "StringFormat.h"
-#include "Poco/File.h"
 #include "Poco/Exception.h"
+#include "Poco/File.h"
+#include "StringFormat.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>

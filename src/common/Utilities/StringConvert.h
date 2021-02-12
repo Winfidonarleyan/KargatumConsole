@@ -23,10 +23,10 @@
 #include "Types.h"
 #include "Util.h"
 #include <charconv>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <optional>
 
 namespace Warhead::Impl::StringConvertImpl
 {

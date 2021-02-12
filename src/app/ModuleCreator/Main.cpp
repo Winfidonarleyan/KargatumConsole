@@ -16,10 +16,10 @@
  */
 
 #include "Common.h"
+#include "GitRevision.h"
 #include "Log.h"
 #include "ModuleCreator.h"
 #include "StringConvert.h"
-#include "GitRevision.h"
 #include <iostream>
 
 void Load()

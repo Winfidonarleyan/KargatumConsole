@@ -16,10 +16,10 @@
  */
 
 #include "Common.h"
-#include "Log.h"
 #include "Cleanup.h"
-#include "StringConvert.h"
 #include "GitRevision.h"
+#include "Log.h"
+#include "StringConvert.h"
 #include <iostream>
 
 void Load()

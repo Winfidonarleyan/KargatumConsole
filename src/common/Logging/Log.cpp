@@ -16,14 +16,14 @@
  */
 
 #include "Log.h"
-#include "Util.h"
-#include <Poco/FormattingChannel.h>
-#include <Poco/PatternFormatter.h>
-#include <Poco/SplitterChannel.h>
-#include <Poco/Logger.h>
 #include "Poco/WindowsConsoleChannel.h"
+#include "Util.h"
 #include <Poco/AutoPtr.h>
 #include <Poco/Exception.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/Logger.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/SplitterChannel.h>
 #include <filesystem>
 #include <sstream>
 

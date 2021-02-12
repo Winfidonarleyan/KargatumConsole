@@ -16,9 +16,9 @@
  */
 
 #include "StringFormat.h"
-#include <Poco/String.h>
-#include <Poco/RegularExpression.h>
 #include <Poco/Exception.h>
+#include <Poco/RegularExpression.h>
+#include <Poco/String.h>
 
 std::string Warhead::String::Trim(std::string& str)
 {
