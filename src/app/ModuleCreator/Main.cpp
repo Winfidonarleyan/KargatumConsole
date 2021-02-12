@@ -22,8 +22,6 @@
 #include "GitRevision.h"
 #include <iostream>
 
-#include <Poco/File.h>
-
 void Load()
 {
     sLog->SetLogLevel(LOG_LEVEL_DEBUG);
