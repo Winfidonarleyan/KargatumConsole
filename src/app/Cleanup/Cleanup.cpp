@@ -19,6 +19,7 @@
 #include "Log.h"
 #include "StringConvert.h"
 #include "Timer.h"
+#include "Util.h"
 #include <Poco/Exception.h>
 #include <Poco/RegularExpression.h>
 #include <filesystem>
@@ -70,24 +71,15 @@ namespace
 
     void ReplaceTabstoWhitespaceInFile(fs::path const& path)
     {
-        std::string text = GetFileText(path.generic_string());
+        std::string text = Warhead::File::GetFileText(path.generic_string());
 
-        try
-        {
-            Poco::RegularExpression re("(\\t)", Poco::RegularExpression::RE_MULTILINE);
-            uint8 count = re.subst(text, " ", Poco::RegularExpression::RE_GLOBAL);
+        uint32 replaceCount = Warhead::String::PatternReplace(text, "(\\t)", " ");
+        if (!replaceCount)
+            return;
 
-            if (!count)
-                return;
-
-            filesReplaceCount++;
-            ReplaceLines += count;
-            LOG_INFO("%u. File (%s). Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), count);
-        }
-        catch (const Poco::Exception& e)
-        {
-            LOG_FATAL("%s", e.displayText());
-        }
+        filesReplaceCount++;
+        ReplaceLines += replaceCount;
+        LOG_INFO("%u. File (%s). Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
 
         std::ofstream file(path);
         if (!file.is_open())
@@ -102,24 +94,15 @@ namespace
 
     void RemoveWhitespaceInFile(fs::path const& path)
     {
-        std::string text = GetFileText(path.generic_string());
+        std::string text = Warhead::File::GetFileText(path.generic_string());
 
-        try
-        {
-            Poco::RegularExpression re("(^\\s+$)|( +$)", Poco::RegularExpression::RE_MULTILINE);
-            uint8 count = re.subst(text, "", Poco::RegularExpression::RE_GLOBAL);
+        uint32 replaceCount = Warhead::String::PatternReplace(text, "(^\\s+$)|( +$)", "");
+        if (!replaceCount)
+            return;
 
-            if (!count)
-                return;
-
-            filesReplaceCount++;
-            ReplaceLines += count;
-            LOG_INFO("%u. '%s'. Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), count);
-        }
-        catch (const Poco::Exception& e)
-        {
-            LOG_FATAL("%s", e.displayText());
-        }
+        filesReplaceCount++;
+        ReplaceLines += replaceCount;
+        LOG_INFO("%u. '%s'. Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
 
         std::ofstream file(path);
         if (!file.is_open())
@@ -134,7 +117,7 @@ namespace
 
     void SortIncludesInFile(fs::path const& path)
     {
-        std::string fileText = GetFileText(path.generic_string());
+        std::string fileText = Warhead::File::GetFileText(path.generic_string());
         std::string origText = fileText;
         std::vector<std::string> _includes;
         std::unordered_map<std::string, std::string> _toReplace;
@@ -143,9 +126,9 @@ namespace
         bool isFirst = false;
         bool isEnd = false;
 
-        for (auto const& itr : Warhead::Tokenize(fileText, '\n', true))
+        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
         {
-            std::string str{ itr };
+            //std::string str{ itr };
 
             auto found = str.find("#include");
 
@@ -204,6 +187,98 @@ namespace
             return;
 
         filesReplaceCount++;
+
+        LOG_INFO("%u. '%s'", filesReplaceCount, path.filename().generic_string().c_str());
+
+        std::ofstream file(path.c_str());
+        if (!file.is_open())
+        {
+            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            return;
+        }
+
+        file.write(fileText.c_str(), fileText.size());
+        file.close();
+    }
+
+    void CheckSameIncludes(fs::path const& path)
+    {
+        std::string fileText = Warhead::File::GetFileText(path.generic_string());
+        std::string origText = fileText;
+        std::vector<std::string> _includes;
+        std::vector<std::string> _includesUniqueue;
+        std::unordered_map<std::string, std::string> _toReplace;
+
+        bool isFirstInclude = false;
+        bool isFirst = false;
+        bool isEnd = false;
+
+        auto IsSameInclude = [&](std::string_view includeName)
+        {
+            for (auto const& itr : _includesUniqueue)
+                if (itr == includeName)
+                    return true;
+
+            return false;
+        };
+
+        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
+        {
+            auto found = str.find("#include");
+
+            if (!isEnd && found == std::string::npos)
+            {
+                isEnd = true;
+
+                if (_includes.empty() || _includes.size() == 1)
+                    continue;
+
+                std::string unsortIncludes = "";
+                std::string sortIncludes = "";
+
+                for (auto const itr : _includes)
+                    unsortIncludes += itr + "\n";
+
+                // Add without same includes
+                for (auto const itr : _includesUniqueue)
+                    sortIncludes += itr + "\n";
+
+                // If uncludes same - no need replace
+                if (unsortIncludes == sortIncludes)
+                    continue;
+
+                _toReplace.emplace(unsortIncludes, sortIncludes);
+
+                _includes.clear();
+                _includesUniqueue.clear();
+            }
+
+            if (found != std::string::npos)
+            {
+                if (isFirst)
+                    isFirst = true;
+
+                if (isEnd)
+                    isEnd = false;
+
+                _includes.emplace_back(str);
+
+                if (IsSameInclude(str))
+                    LOG_WARN("> Same include '%s' - '%s'", std::string(str).c_str(), path.generic_string().c_str());
+                else
+                    _includesUniqueue.emplace_back(str);
+            }
+        }
+
+        for (auto const& [unsortIncludes, sortIncludes] : _toReplace)
+            fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
+
+        if (fileText == origText)
+            return;
+
+        filesReplaceCount++;
+
+        LOG_INFO("%u. '%s'", filesReplaceCount, path.filename().generic_string().c_str());
 
         std::ofstream file(path.c_str());
         if (!file.is_open())
@@ -334,6 +409,35 @@ void Cleanup::SortIncludes(bool needCheckFirstInclude /*= false*/)
 
     for (auto const& filePath : _localeFileStorage)
         SortIncludesInFile(filePath);
+
+    GetStats(ms);
+}
+
+void Cleanup::CheckSameIncludes()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h" });
+
+    LOG_INFO("> Start cleanup? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start cleanup (same includes) for '%s'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    for (auto const& filePath : _localeFileStorage)
+        ::CheckSameIncludes(filePath);
 
     GetStats(ms);
 }

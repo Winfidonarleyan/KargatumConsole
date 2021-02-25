@@ -28,6 +28,7 @@ public:
     void RemoveWhitespace();
     void ReplaceTabs();
     void SortIncludes(bool needCheckFirstInclude = true);
+    void CheckSameIncludes();
 
     void SendPathInfo();
 

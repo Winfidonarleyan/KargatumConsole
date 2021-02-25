@@ -35,7 +35,8 @@ void SelectCleanup()
     LOG_INFO("# 1. Remove whitespace");
     LOG_INFO("# 2. Replace tabs");
     LOG_INFO("# 3. Sort includes (with check first include)");
-    LOG_INFO("# 4. Sort includes (without check first include");
+    LOG_INFO("# 4. Sort includes (without check first include)");
+    LOG_INFO("# 5. Same includes");
     LOG_INFO("# --");
     LOG_INFO("# 9. Exit");
     LOG_INFO("# --");
@@ -58,6 +59,9 @@ void SelectCleanup()
             break;
         case 4:
             sClean->SortIncludes(false);
+            break;
+        case 5:
+            sClean->CheckSameIncludes();
             break;
         case 9:
             exit(0);
