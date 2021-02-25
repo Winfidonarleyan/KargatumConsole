@@ -16,6 +16,7 @@
  */
 
 #include "StringFormat.h"
+#include "Log.h"
 #include <Poco/Exception.h>
 #include <Poco/RegularExpression.h>
 #include <Poco/String.h>
@@ -23,6 +24,19 @@
 std::string Warhead::String::Trim(std::string& str)
 {
     return Poco::trim(str);
+}
+
+// Taken from https://stackoverflow.com/a/1798170
+std::string Warhead::String::Trim(std::string const& str, std::string_view whitespace /*= " \t"*/)
+{
+    const auto strBegin = str.find_first_not_of(whitespace);
+    if (strBegin == std::string::npos)
+        return ""; // no content
+
+    auto const strEnd = str.find_last_not_of(whitespace);
+    auto const strRange = strEnd - strBegin + 1;
+
+    return str.substr(strBegin, strRange);
 }
 
 std::string Warhead::String::TrimLeft(std::string& str)
@@ -45,6 +59,27 @@ std::string Warhead::String::TrimRightInPlace(std::string& str)
     return Poco::trimRightInPlace(str);
 }
 
+std::string Warhead::String::Reduce(std::string const& str, std::string_view fill /*= " "*/, std::string_view whitespace /*= " \t"*/)
+{
+    // trim first
+    auto result = Trim(str, whitespace);
+
+    // replace sub ranges
+    auto beginSpace = result.find_first_of(whitespace);
+    while (beginSpace != std::string::npos)
+    {
+        const auto endSpace = result.find_first_not_of(whitespace, beginSpace);
+        const auto range = endSpace - beginSpace;
+
+        result.replace(beginSpace, range, fill);
+
+        const auto newStart = beginSpace + fill.length();
+        beginSpace = result.find_first_of(whitespace, newStart);
+    }
+
+    return result;
+}
+
 std::string Warhead::String::Replace(std::string& str, std::string const& from, std::string const& to)
 {
     return Poco::replace(str, from, to);
@@ -55,8 +90,17 @@ std::string Warhead::String::ReplaceInPlace(std::string& str, std::string const&
     return Poco::replaceInPlace(str, from, to);
 }
 
-uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& replacementFrom, const std::string& replacementTo)
+uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& pattern, const std::string& replacement)
 {
-    Poco::RegularExpression re(replacementFrom, Poco::RegularExpression::RE_MULTILINE);
-    return re.subst(subject, replacementTo, Poco::RegularExpression::RE_GLOBAL);
+    try
+    {
+        Poco::RegularExpression re(pattern, Poco::RegularExpression::RE_MULTILINE);
+        return re.subst(subject, replacement, Poco::RegularExpression::RE_GLOBAL);
+    }
+    catch (const Poco::Exception& e)
+    {
+        LOG_FATAL("> Warhead::String::PatternReplace: %s", e.displayText());
+    }
+
+    return 0;
 }

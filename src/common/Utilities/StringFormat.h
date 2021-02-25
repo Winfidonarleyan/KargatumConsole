@@ -18,7 +18,7 @@
 #ifndef _STRING_FORMAT_H_
 #define _STRING_FORMAT_H_
 
-#include "Common.h"
+#include "Define.h"
 #include <fmt/printf.h>
 
 namespace Warhead
@@ -54,15 +54,17 @@ namespace Warhead
 namespace Warhead::String
 {
     WH_COMMON_API std::string Trim(std::string& str);
+    WH_COMMON_API std::string Trim(std::string const& str, std::string_view whitespace = " \t");
     WH_COMMON_API std::string TrimLeft(std::string& str);
     WH_COMMON_API std::string TrimLeftInPlace(std::string& str);
     WH_COMMON_API std::string TrimRight(std::string& str);
     WH_COMMON_API std::string TrimRightInPlace(std::string& str);
+    WH_COMMON_API std::string Reduce(std::string const& str, std::string_view fill = " ", std::string_view whitespace = " \t");
     WH_COMMON_API std::string Replace(std::string& str, std::string const& from, std::string const& to);
     WH_COMMON_API std::string ReplaceInPlace(std::string& str, std::string const& from, std::string const& to);
 
     // RegularExpression
-    WH_COMMON_API uint32 PatternReplace(std::string& subject, const std::string& replacementFrom, const std::string& replacementTo);
+    WH_COMMON_API uint32 PatternReplace(std::string& subject, const std::string& pattern, const std::string& replacement);
 }
 
 #endif
