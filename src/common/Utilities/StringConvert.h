@@ -76,7 +76,6 @@ namespace Warhead::Impl::StringConvertImpl
             char* const start = buf.data();
             char* const end = (start + buf.length());
             std::to_chars_result const res = std::to_chars(start, end, val);
-            ASSERT(res.ec == std::errc());
             buf.resize(res.ptr - start);
             return buf;
         }
