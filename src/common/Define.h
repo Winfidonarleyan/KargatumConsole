@@ -34,20 +34,20 @@
 
 #ifdef WH_API_USE_DYNAMIC_LINKING
 #  if WH_COMPILER == WH_COMPILER_MICROSOFT
-#    define K_API_EXPORT __declspec(dllexport)
-#    define K_API_IMPORT __declspec(dllimport)
+#    define WH_API_EXPORT __declspec(dllexport)
+#    define WH_API_IMPORT __declspec(dllimport)
 #  else
 #    error compiler not supported!
 #  endif
 #else
-#  define K_API_EXPORT
-#  define K_API_IMPORT
+#  define WH_API_EXPORT
+#  define WH_API_IMPORT
 #endif
 
 #ifdef WH_API_EXPORT_COMMON
-#  define WH_COMMON_API K_API_EXPORT
+#  define WH_COMMON_API WH_API_EXPORT
 #else
-#  define WH_COMMON_API K_API_IMPORT
+#  define WH_COMMON_API WH_API_IMPORT
 #endif
 
 #define UI64FMTD "%" PRIu64
