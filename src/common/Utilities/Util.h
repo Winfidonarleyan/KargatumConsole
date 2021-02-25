@@ -38,6 +38,14 @@ namespace Warhead
 
 WH_COMMON_API bool StringEqualI(std::string_view str1, std::string_view str2);
 
-WH_COMMON_API std::string GetFileText(std::string const& path);
+namespace Warhead::File
+{
+    WH_COMMON_API std::string GetFileText(std::string const& path, bool openBinary = false);
+    WH_COMMON_API bool FindFile(std::string_view findName, std::string const& pathFind, bool recursive = false);
+    WH_COMMON_API bool FindDirectory(std::string_view findName, std::string const& pathFind, bool recursive = false);
+    WH_COMMON_API void FillFileList(std::vector<std::string>& pathList, std::string const& pathFill, bool recursive = false);
+    WH_COMMON_API std::string GetFileName(std::string const& filePath);
+    WH_COMMON_API uint64 GetFileSize(std::string const& filePath);
+}
 
 #endif
