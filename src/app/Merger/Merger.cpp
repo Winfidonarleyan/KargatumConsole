@@ -66,7 +66,7 @@ namespace
 
     void Correct(fs::path const& path, std::string const& replaceFrom, std::string const& replaceTo)
     {
-        std::string text = GetFileText(path.generic_string());
+        std::string text = Warhead::File::GetFileText(path.generic_string());
 
         uint8 count = Warhead::String::PatternReplace(text, replaceFrom, replaceTo);
         if (!count)
