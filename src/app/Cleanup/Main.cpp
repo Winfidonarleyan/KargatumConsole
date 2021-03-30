@@ -22,11 +22,6 @@
 #include "StringConvert.h"
 #include <iostream>
 
-void Load()
-{
-    sLog->SetLogLevel(LOG_LEVEL_DEBUG);
-}
-
 void SelectCleanup()
 {
     LOG_INFO("%s", GitRevision::GetFullVersion());
@@ -37,6 +32,7 @@ void SelectCleanup()
     LOG_INFO("# 3. Sort includes (with check first include)");
     LOG_INFO("# 4. Sort includes (without check first include)");
     LOG_INFO("# 5. Same includes");
+    LOG_INFO("# 6. Clean ENABLE_EXTRA_LOGS");
     LOG_INFO("# --");
     LOG_INFO("# 9. Exit");
     LOG_INFO("# --");
@@ -63,6 +59,9 @@ void SelectCleanup()
         case 5:
             sClean->CheckSameIncludes();
             break;
+        case 6:
+            sClean->CheckExtraLogs();
+            break;
         case 9:
             exit(0);
             break;
@@ -74,8 +73,6 @@ void SelectCleanup()
 
 int main()
 {
-    Load();
-
     while (true)
     {
         SelectCleanup();

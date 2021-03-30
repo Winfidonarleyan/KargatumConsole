@@ -29,6 +29,7 @@ public:
     void ReplaceTabs();
     void SortIncludes(bool needCheckFirstInclude = true);
     void CheckSameIncludes();
+    void CheckExtraLogs();
 
     void SendPathInfo();
 

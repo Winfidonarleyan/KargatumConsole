@@ -24,6 +24,7 @@
 #include <Poco/RegularExpression.h>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
@@ -291,6 +292,78 @@ namespace
         file.close();
     }
 
+    void CleanExtraDefines(fs::path const& path)
+    {
+        std::string fileText = Warhead::File::GetFileText(path.generic_string());
+
+        std::string origText = fileText;
+        std::map<uint32 /*line number*/, std::string /*line text*/> lineTexts;
+        std::vector<uint32> _toDeleteLines;
+        uint32 lineNumber = 1;
+
+        // Insert default text
+        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
+        {
+            lineTexts.emplace(lineNumber, str);
+            lineNumber++;
+        }
+
+        bool isFoundDefine = false;
+        bool isFoundEndIf = false;
+        lineNumber = 1;
+
+        for (auto& [stringLine, stringText] : lineTexts)
+        {
+            auto foundDefine = stringText.find("ENABLE_EXTRA_LOGS");
+            auto foundEndIf = stringText.find("#endif");
+
+            if (!isFoundDefine && foundDefine != std::string::npos)
+            {
+                isFoundDefine = true;
+                isFoundEndIf = false;
+                _toDeleteLines.emplace_back(lineNumber);
+                ReplaceLines++;
+            }
+            else if (isFoundDefine && !isFoundEndIf && foundEndIf != std::string::npos)
+            {
+                isFoundEndIf = true;
+                isFoundDefine = false;
+                _toDeleteLines.emplace_back(lineNumber);
+                ReplaceLines++;
+            }
+
+            lineNumber++;
+        }
+
+        fileText.clear();
+
+        for (auto itr : _toDeleteLines)
+            lineTexts.erase(itr);
+
+        for (auto const& [stringLine, stringText] : lineTexts)
+            fileText += stringText + "\n";
+
+        // Replace whitespace
+        Warhead::String::PatternReplace(fileText, "(^\\s+$)|( +$)", "");
+
+        if (fileText == origText)
+            return;
+
+        filesReplaceCount++;
+
+        LOG_INFO("%u. '%s'", filesReplaceCount, path.filename().generic_string().c_str());
+
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            return;
+        }
+
+        file.write(fileText.c_str(), fileText.size());
+        file.close();
+    }
+
     void GetStats(uint32 startTimeMS)
     {
         LOG_INFO("");
@@ -438,6 +511,35 @@ void Cleanup::CheckSameIncludes()
 
     for (auto const& filePath : _localeFileStorage)
         ::CheckSameIncludes(filePath);
+
+    GetStats(ms);
+}
+
+void Cleanup::CheckExtraLogs()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h"});
+
+    LOG_INFO("> Start cleanup? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start cleanup (remove extra logs define) for '%s'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    for (auto const& filePath : _localeFileStorage)
+        ::CleanExtraDefines(filePath);
 
     GetStats(ms);
 }
