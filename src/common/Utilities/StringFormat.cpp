@@ -20,23 +20,35 @@
 #include <Poco/Exception.h>
 #include <Poco/RegularExpression.h>
 #include <Poco/String.h>
+#include <locale>
 
 std::string Warhead::String::Trim(std::string& str)
 {
     return Poco::trim(str);
 }
 
-// Taken from https://stackoverflow.com/a/1798170
-std::string Warhead::String::Trim(std::string const& str, std::string_view whitespace /*= " \t"*/)
+template<class Str>
+WH_COMMON_API Str Warhead::String::Trim(const Str& s, const std::locale& loc /*= std::locale()*/)
 {
-    const auto strBegin = str.find_first_not_of(whitespace);
-    if (strBegin == std::string::npos)
-        return ""; // no content
+    typename Str::const_iterator first = s.begin();
+    typename Str::const_iterator end = s.end();
 
-    auto const strEnd = str.find_last_not_of(whitespace);
-    auto const strRange = strEnd - strBegin + 1;
+    while (first != end && std::isspace(*first, loc))
+        ++first;
 
-    return str.substr(strBegin, strRange);
+    if (first == end)
+        return Str();
+
+    typename Str::const_iterator last = end;
+
+    do
+        --last;
+    while (std::isspace(*last, loc));
+
+    if (first != s.begin() || last + 1 != end)
+        return Str(first, last + 1);
+
+    return s;
 }
 
 std::string Warhead::String::TrimLeft(std::string& str)
@@ -57,27 +69,6 @@ std::string Warhead::String::TrimRight(std::string& str)
 std::string Warhead::String::TrimRightInPlace(std::string& str)
 {
     return Poco::trimRightInPlace(str);
-}
-
-std::string Warhead::String::Reduce(std::string const& str, std::string_view fill /*= " "*/, std::string_view whitespace /*= " \t"*/)
-{
-    // trim first
-    auto result = Trim(str, whitespace);
-
-    // replace sub ranges
-    auto beginSpace = result.find_first_of(whitespace);
-    while (beginSpace != std::string::npos)
-    {
-        const auto endSpace = result.find_first_not_of(whitespace, beginSpace);
-        const auto range = endSpace - beginSpace;
-
-        result.replace(beginSpace, range, fill);
-
-        const auto newStart = beginSpace + fill.length();
-        beginSpace = result.find_first_of(whitespace, newStart);
-    }
-
-    return result;
 }
 
 std::string Warhead::String::Replace(std::string& str, std::string const& from, std::string const& to)
@@ -104,3 +95,6 @@ uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& 
 
     return 0;
 }
+
+// Template Trim
+template WH_COMMON_API std::string Warhead::String::Trim<std::string>(const std::string& s, const std::locale& loc /*= std::locale()*/);
