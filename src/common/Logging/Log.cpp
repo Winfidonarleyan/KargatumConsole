@@ -66,6 +66,8 @@ void Log::Initialize()
 
 void Log::InitSystemLogger()
 {
+    LogLevel level = LOG_LEVEL_DEBUG;
+
     // Start console channel
     AutoPtr<PatternFormatter> _ConsolePattern(new PatternFormatter);
 
@@ -99,9 +101,11 @@ void Log::InitSystemLogger()
 
     try
     {
-        Logger::create("system", new FormattingChannel(_ConsolePattern, _ConsoleChannel), 6);
+        Logger::create("system", new FormattingChannel(_ConsolePattern, _ConsoleChannel), level);
     }
     LOG_CATCH
+
+    highestLogLevel = level;
 }
 
 bool Log::ShouldLog(LogLevel const level) const
