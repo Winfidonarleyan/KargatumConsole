@@ -22,6 +22,15 @@
 #include <Poco/DateTimeFormatter.h>
 #include <Poco/Timespan.h>
 #include <sstream>
+#include <iomanip>
+
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+struct tm* localtime_r(time_t const* time, struct tm* result)
+{
+    localtime_s(result, time);
+    return result;
+}
+#endif
 
 template<>
 WH_COMMON_API uint32 Warhead::Time::TimeStringTo<Seconds>(std::string_view timestring)
@@ -176,4 +185,42 @@ std::string Warhead::Time::ToTimeString(Microseconds durationTime, TimeOutput ti
 std::string Warhead::Time::TimeToTimestampStr(time_t t)
 {
     return Poco::DateTimeFormatter::format(Poco::Timestamp::fromEpochTime(t), Poco::DateTimeFormat::RFC1123_FORMAT);
+}
+
+std::string Warhead::Time::TimeToHumanReadable(time_t t)
+{
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&t), "%Y-%m-%d %X");
+    return ss.str();
+}
+
+tm Warhead::Time::TimeBreakdown(time_t time)
+{
+    tm timeLocal;
+    localtime_r(&time, &timeLocal);
+    return timeLocal;
+}
+
+time_t Warhead::Time::LocalTimeToUTCTime(time_t time)
+{
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+    return time + _timezone;
+#else
+    return time + timezone;
+#endif
+}
+
+time_t Warhead::Time::GetLocalHourTimestamp(time_t time, uint8 hour, bool onlyAfterTime)
+{
+    tm timeLocal = TimeBreakdown(time);
+    timeLocal.tm_hour = 0;
+    timeLocal.tm_min = 0;
+    timeLocal.tm_sec = 0;
+    time_t midnightLocal = mktime(&timeLocal);
+    time_t hourLocal = midnightLocal + hour * HOUR;
+
+    if (onlyAfterTime && hourLocal <= time)
+        hourLocal += DAY;
+
+    return hourLocal;
 }

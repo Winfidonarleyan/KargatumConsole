@@ -51,7 +51,11 @@ namespace Warhead::Time
 
     WH_COMMON_API std::string ToTimeString(Microseconds durationTime, TimeOutput timeOutput = TimeOutput::Seconds, TimeFormat timeFormat = TimeFormat::ShortText);
 
+    WH_COMMON_API time_t LocalTimeToUTCTime(time_t time);
+    WH_COMMON_API time_t GetLocalHourTimestamp(time_t time, uint8 hour, bool onlyAfterTime = true);
+    WH_COMMON_API tm TimeBreakdown(time_t t);
     WH_COMMON_API std::string TimeToTimestampStr(time_t t);
+    WH_COMMON_API std::string TimeToHumanReadable(time_t t);
 }
 
 inline TimePoint GetApplicationStartTime()
