@@ -33,7 +33,7 @@ class WH_COMMON_API ConfigMgr
 public:
     bool LoadAppConfigs();
     bool LoadModulesConfigs();
-    void Configure(std::string const& initFileName, std::vector<std::string> args, std::string const& modulesConfigList = "");
+    void Configure(std::string const& initFileName, std::string const& modulesConfigList = "");
 
     static ConfigMgr* instance();
 
@@ -41,7 +41,6 @@ public:
 
     std::string const& GetFilename();
     std::string const GetConfigPath();
-    std::vector<std::string> const& GetArguments() const;
     std::vector<std::string> GetKeysByString(std::string const& name);
 
     template<class T>

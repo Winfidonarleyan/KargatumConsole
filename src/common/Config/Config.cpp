@@ -28,7 +28,6 @@ namespace
 {
     std::string _filename;
     std::vector<std::string> _additonalFiles;
-    std::vector<std::string> _args;
     std::unordered_map<std::string /*name*/, std::string /*value*/> _configOptions;
     std::mutex _configLock;
 
@@ -48,7 +47,7 @@ namespace
 
         _configOptions.emplace(optionName, optionKey);
 
-        LOG_TRACE("> Config: Add '%s' - '%s'", optionName.c_str(), optionKey.c_str());
+        LOG_DEBUG("> Config: Add '%s' - '%s'", optionName.c_str(), optionKey.c_str());
     }
 
     void ParseFile(std::string const& file)
@@ -68,19 +67,23 @@ namespace
             if (line.empty())
                 continue;
 
-            line = Warhead::String::Reduce(line);
+            line = Warhead::String::Trim(line, in.getloc());
 
             // comments
             if (line[0] == '#' || line[0] == '[')
                 continue;
+
+            size_t found = line.find_last_of('#');
+            if (found != std::string::npos)
+                line = line.substr(0, found);
 
             auto const equal_pos = line.find('=');
 
             if (equal_pos == std::string::npos || equal_pos == line.length())
                 return;
 
-            auto entry = Warhead::String::Reduce(line.substr(0, equal_pos));
-            auto value = Warhead::String::Reduce(line.substr(equal_pos + 1));
+            auto entry = Warhead::String::Trim(line.substr(0, equal_pos), in.getloc());
+            auto value = Warhead::String::Trim(line.substr(equal_pos + 1), in.getloc());
 
             value.erase(std::remove(value.begin(), value.end(), '"'), value.end());
 
@@ -201,11 +204,6 @@ std::string const& ConfigMgr::GetFilename()
     return _filename;
 }
 
-std::vector<std::string> const& ConfigMgr::GetArguments() const
-{
-    return _args;
-}
-
 std::vector<std::string> ConfigMgr::GetKeysByString(std::string const& name)
 {
     std::lock_guard<std::mutex> lock(_configLock);
@@ -226,10 +224,9 @@ std::string const ConfigMgr::GetConfigPath()
     return "configs/";
 }
 
-void ConfigMgr::Configure(std::string const& initFileName, std::vector<std::string> args, std::string const& modulesConfigList /*= ""*/)
+void ConfigMgr::Configure(std::string const& initFileName, std::string const& modulesConfigList /*= ""*/)
 {
     _filename = initFileName;
-    _args = std::move(args);
 
     if (!modulesConfigList.empty())
         for (auto const& itr : Warhead::Tokenize(modulesConfigList, ',', false))
