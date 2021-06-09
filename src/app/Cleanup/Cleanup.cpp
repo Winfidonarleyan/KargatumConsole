@@ -16,6 +16,7 @@
  */
 
 #include "Cleanup.h"
+#include "Config.h"
 #include "Log.h"
 #include "StringConvert.h"
 #include "Timer.h"
@@ -42,6 +43,9 @@ namespace
     fs::path _path;
     std::vector<fs::path> _localeFileStorage;
     std::vector<std::string> _supportExtensions;
+
+    // Config
+    std::unordered_map<uint8, std::string> _pathList;
 
     // Sort includes
     std::unordered_map<std::string, std::string> _textStore;
@@ -153,10 +157,49 @@ namespace
         bool isFirst = false;
         bool isEnd = false;
 
+        auto _SortIncludes = [&]()
+        {
+            std::string unsortIncludes = "";
+            std::string sortIncludes = "";
+            std::string firstInclude = "";
+
+            for (auto const& itr : _includes)
+            {
+                std::string nameFile = path.filename().generic_string();
+                nameFile.erase(nameFile.end() - path.extension().generic_string().length(), nameFile.end());
+
+                if (itr.find("#include \"" + nameFile + ".h") != std::string::npos)
+                    firstInclude = itr;
+            }
+
+            for (auto const itr : _includes)
+                unsortIncludes += itr + "\n";
+
+            std::sort(_includes.begin(), _includes.end());
+
+            // Added first include
+            if (!firstInclude.empty())
+                sortIncludes += firstInclude + "\n";
+
+            for (auto const itr : _includes)
+            {
+                if (itr == firstInclude)
+                    continue;
+
+                sortIncludes += itr + "\n";
+            }
+
+            // If uncludes same - no need replace
+            if (unsortIncludes == sortIncludes)
+                return;
+
+            _toReplace.emplace(unsortIncludes, sortIncludes);
+
+            _includes.clear();
+        };
+
         for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
         {
-            //std::string str{ itr };
-
             auto found = str.find("#include");
 
             if (!isEnd && found == std::string::npos)
@@ -166,24 +209,7 @@ namespace
                 if (_includes.empty() || _includes.size() == 1)
                     continue;
 
-                std::string unsortIncludes = "";
-                std::string sortIncludes = "";
-
-                for (auto const itr : _includes)
-                    unsortIncludes += itr + "\n";
-
-                std::sort(_includes.begin(), _includes.end());
-
-                for (auto const itr : _includes)
-                    sortIncludes += itr + "\n";
-
-                // If uncludes same - no need replace
-                if (unsortIncludes == sortIncludes)
-                    continue;
-
-                _toReplace.emplace(unsortIncludes, sortIncludes);
-
-                _includes.clear();
+                _SortIncludes();
             }
 
             if (found != std::string::npos)
@@ -194,15 +220,15 @@ namespace
                 if (isEnd)
                     isEnd = false;
 
-                if (!isFirstInclude)
+                /*if (!isFirstInclude)
                 {
                     isFirstInclude = true;
 
-                    auto isDefaultInclude = str.find("#include \"");
-                    if (isDefaultInclude == std::string::npos || !enbaleCheckFirstInclude)
+                    auto isDefaultInclude = str.find("#include \"") == std::string::npos;
+                    if (isDefaultInclude || !enbaleCheckFirstInclude)
                         _includes.emplace_back(str);
                 }
-                else
+                else*/
                     _includes.emplace_back(str);
             }
         }
@@ -689,7 +715,7 @@ void Cleanup::ReplaceTabs()
     GetStats(ms);
 }
 
-void Cleanup::SortIncludes(bool needCheckFirstInclude /*= false*/)
+void Cleanup::SortIncludes()
 {
     system("cls");
 
@@ -697,10 +723,10 @@ void Cleanup::SortIncludes(bool needCheckFirstInclude /*= false*/)
 
     GetListFiles({ ".cpp", ".h" });
 
-    enbaleCheckFirstInclude = needCheckFirstInclude;
+    enbaleCheckFirstInclude = sConfigMgr->GetOption<bool>("Cleanup.CleanInclude.CheckFirst.Enable", true);
 
     LOG_INFO("# -- Sort Includes options: ");
-    LOG_INFO("1. Skip check first include - '%s'", enbaleCheckFirstInclude ? "true" : "false");
+    LOG_INFO("> Skip check first include - '%s'", enbaleCheckFirstInclude ? "true" : "false");
     LOG_INFO("# --");
     LOG_INFO("> Start cleanup? [yes (default) / no]");
 
@@ -900,34 +926,33 @@ void Cleanup::SendPathInfo()
 
     auto GetPathFromConsole = [&](uint32 selectOption)
     {
-        std::string whitespacePath;
+        std::string selectPath;
 
-        switch (selectOption)
+        if (selectOption == 8)
         {
-            case 1:
-                whitespacePath = "F:\\Git\\WarheadBand\\src";
-                break;
-            case 2:
-                whitespacePath = "F:\\Git\\azerothcore-wotlk\\src";
-                break;
-            case 8:
-                LOG_INFO("-- Enter path:");
-                std::getline(std::cin, whitespacePath);
-                break;
-            default:
-                SendPathInfo();
-                break;
+            LOG_INFO("-- Enter path:");
+            std::getline(std::cin, selectPath);
+        }
+        else
+        {
+            auto const& itr = _pathList.find(selectOption);
+            if (itr != _pathList.end())
+                selectPath = itr->second;
         }
 
-        return whitespacePath;
+        return selectPath;
     };
 
     std::string pathInfo = GetPath();
     if (pathInfo.empty())
     {
         LOG_FATAL(">> Path is empty! Please enter path.");
-        LOG_INFO("1. ./WarheadBand/src");
-        LOG_INFO("2. ./azerothcore-wotlk/src");
+
+        for (auto const& [index, _path] : _pathList)
+        {
+            LOG_INFO("%u. '%s'", index, _path.c_str());
+        }
+
         LOG_INFO("# --");
         LOG_INFO("8. Enter path manually");
         LOG_INFO("> Select:");
@@ -945,4 +970,33 @@ void Cleanup::SendPathInfo()
 
     if (!IsCorrectPath())
         SendPathInfo();
+}
+
+void Cleanup::LoadPathInfo()
+{
+    sConfigMgr->Configure("F:\\Git\\KargatumConsole\\src\\app\\Cleanup\\cleanup.conf");
+
+    if (!sConfigMgr->LoadAppConfigs())
+    {
+        LOG_FATAL("> Config not loaded!");
+        return;
+    }
+
+    LOG_INFO(">> Loading path list...");
+
+    _pathList.clear();
+
+    std::string pathStr = sConfigMgr->GetOption<std::string>("Cleanup.PathList", "");
+    std::vector<std::string_view> tokens = Warhead::Tokenize(pathStr, ',', false);
+    uint8 index = 1;
+
+    for (auto const& itr : tokens)
+    {
+        LOG_DEBUG("> Added path '%s'. Index %u", std::string(itr).c_str(), index);
+        _pathList.emplace(index, itr);
+        index++;
+    }
+
+    LOG_INFO("> Loaded %u paths", static_cast<uint32>(_pathList.size()));
+    LOG_INFO("--");
 }

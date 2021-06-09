@@ -27,7 +27,7 @@ public:
 
     void RemoveWhitespace();
     void ReplaceTabs();
-    void SortIncludes(bool needCheckFirstInclude = true);
+    void SortIncludes();
     void CheckSameIncludes();
     void CheckExtraLogs();
     void CheckUsingIncludesCount();
@@ -35,6 +35,7 @@ public:
     void ReplaceConfigOptions();
 
     void SendPathInfo();
+    void LoadPathInfo();
 
     bool SetPath(std::string const& path);
     void CleanPath();

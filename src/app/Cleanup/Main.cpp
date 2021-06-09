@@ -24,16 +24,13 @@
 
 void SelectCleanup()
 {
-    LOG_INFO("%s", GitRevision::GetFullVersion());
-    LOG_INFO("");
     LOG_INFO("# -- Select cleanup method:");
     LOG_INFO("# 1. Remove whitespace");
     LOG_INFO("# 2. Replace tabs");
-    LOG_INFO("# 3. Sort includes (with check first include)");
-    LOG_INFO("# 4. Sort includes (without check first include)");
-    LOG_INFO("# 5. Same includes");
-    LOG_INFO("# 6. Clean ENABLE_EXTRA_LOGS");
-    LOG_INFO("# 7. Check using includes");
+    LOG_INFO("# 3. Sort includes");
+    LOG_INFO("# 4. Same includes");
+    LOG_INFO("# 5. Clean ENABLE_EXTRA_LOGS");
+    LOG_INFO("# 6. Check using includes");
     LOG_INFO("# --");
     LOG_INFO("# 10. Check bool configs");
     LOG_INFO("# 11. Check uint32 configs");
@@ -62,15 +59,12 @@ void SelectCleanup()
             sClean->SortIncludes();
             break;
         case 4:
-            sClean->SortIncludes(false);
-            break;
-        case 5:
             sClean->CheckSameIncludes();
             break;
-        case 6:
+        case 5:
             sClean->CheckExtraLogs();
             break;
-        case 7:
+        case 6:
             sClean->CheckUsingIncludesCount();
             break;
         // Configs
@@ -104,6 +98,11 @@ void SelectCleanup()
 
 int main()
 {
+    LOG_INFO("%s", GitRevision::GetFullVersion());
+    LOG_INFO("--");
+
+    sClean->LoadPathInfo();
+
     while (true)
     {
         SelectCleanup();

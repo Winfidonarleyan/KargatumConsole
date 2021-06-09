@@ -32,19 +32,16 @@ class WH_COMMON_API ConfigMgr
 
 public:
     bool LoadAppConfigs();
-    bool LoadModulesConfigs();
-    void Configure(std::string const& initFileName, std::string const& modulesConfigList = "");
+    void Configure(std::string const& initFileName);
 
     static ConfigMgr* instance();
-
-    bool Reload();
 
     std::string const& GetFilename();
     std::string const GetConfigPath();
     std::vector<std::string> GetKeysByString(std::string const& name);
 
     template<class T>
-    T GetOption(std::string const& name, T const& def) const;
+    T GetOption(std::string const& name, T const& def, bool showLogs = true) const;
 
 private:
     /// Method used only for loading main configuration files (authserver.conf and worldserver.conf)
@@ -52,7 +49,7 @@ private:
     bool LoadAdditionalFile(std::string file);
 
     template<class T>
-    T GetValueDefault(std::string const& name, T const& def) const;
+    T GetValueDefault(std::string const& name, T const& def, bool showLogs = true) const;
 };
 
 class WH_COMMON_API ConfigException : public std::length_error
