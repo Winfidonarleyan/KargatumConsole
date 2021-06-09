@@ -33,8 +33,16 @@ void SelectCleanup()
     LOG_INFO("# 4. Sort includes (without check first include)");
     LOG_INFO("# 5. Same includes");
     LOG_INFO("# 6. Clean ENABLE_EXTRA_LOGS");
+    LOG_INFO("# 7. Check using includes");
     LOG_INFO("# --");
-    LOG_INFO("# 9. Exit");
+    LOG_INFO("# 10. Check bool configs");
+    LOG_INFO("# 11. Check uint32 configs");
+    LOG_INFO("# 12. Check int32 configs");
+    LOG_INFO("# 13. Check std::string configs");
+    LOG_INFO("# 14. Check float configs");
+    LOG_INFO("# 15. Replace config options API");
+    LOG_INFO("# --");
+    LOG_INFO("# 99. Exit");
     LOG_INFO("# --");
     LOG_INFO("> Select:");
 
@@ -62,7 +70,30 @@ void SelectCleanup()
         case 6:
             sClean->CheckExtraLogs();
             break;
-        case 9:
+        case 7:
+            sClean->CheckUsingIncludesCount();
+            break;
+        // Configs
+        case 10:
+            sClean->CheckConfigOptions("bool");
+            break;
+        case 11:
+            sClean->CheckConfigOptions("uint32");
+            break;
+        case 12:
+            sClean->CheckConfigOptions("int32");
+            break;
+        case 13:
+            sClean->CheckConfigOptions("std::string");
+            break;
+        case 14:
+            sClean->CheckConfigOptions("float");
+            break;
+        case 15:
+            sClean->ReplaceConfigOptions();
+            break;
+        // Exit console
+        case 99:
             exit(0);
             break;
         default:

@@ -30,6 +30,9 @@ public:
     void SortIncludes(bool needCheckFirstInclude = true);
     void CheckSameIncludes();
     void CheckExtraLogs();
+    void CheckUsingIncludesCount();
+    void CheckConfigOptions(std::string const& configType);
+    void ReplaceConfigOptions();
 
     void SendPathInfo();
 
