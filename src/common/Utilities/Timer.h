@@ -35,7 +35,8 @@ enum class TimeOutput : uint8
     Hours,          // 1d 2h
     Minutes,        // 1d 2h 3m
     Seconds,        // 1d 2h 3m 4s
-    Milliseconds    // 1d 2h 3m 4s 5ms
+    Milliseconds,   // 1d 2h 3m 4s 5ms
+    Microseconds    // 1d 2h 3m 4s 5ms 6us
 };
 
 namespace Warhead::Time

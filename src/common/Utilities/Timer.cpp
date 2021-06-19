@@ -80,6 +80,7 @@ WH_COMMON_API std::string Warhead::Time::ToTimeString<Microseconds>(uint64 durat
 {
     Poco::Timespan span(durationTime);
 
+    uint32 microsecs = span.microseconds();
     uint32 millisecs = span.milliseconds();
     uint32 secs = span.seconds();
     uint32 minutes = span.minutes();
@@ -148,6 +149,12 @@ WH_COMMON_API std::string Warhead::Time::ToTimeString<Microseconds>(uint64 durat
         GetStringFormat(millisecs, "ms ", " Millisecond ", " Milliseconds ");
 
     if (timeOutput == TimeOutput::Milliseconds)
+        stringTime = ss.str();
+
+    if (millisecs || timeOutput == TimeOutput::Milliseconds)
+        GetStringFormat(microsecs, "us ", " Microsecond ", " Microseconds ");
+
+    if (timeOutput == TimeOutput::Microseconds)
         stringTime = ss.str();
 
     return Warhead::String::TrimRightInPlace(stringTime);
