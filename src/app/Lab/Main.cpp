@@ -34,9 +34,22 @@
 
 namespace fs = std::filesystem;
 
-//
-constexpr auto FILE_PATH = "RandomNumbers.txt";
-std::mutex _lock;
+namespace
+{
+    using NumbersTemplate = std::vector<int>;
+
+    NumbersTemplate _numbers;
+    NumbersTemplate _numbers1;
+    NumbersTemplate _numbers2;
+
+    //
+    constexpr auto FILE_PATH = "RandomNumbers.txt";
+    std::mutex _lock;
+
+    constexpr auto numbersCount = 2000000;
+    constexpr auto numbersMin = 10;
+    constexpr auto numbersMax = 10000;
+}
 
 inline Poco::Timestamp::TimeDiff GetUSTimeDiffToNow(Poco::Timestamp& startTime)
 {
@@ -50,7 +63,7 @@ inline Poco::Timestamp::TimeDiff GetUSTimeDiffToNow(Poco::Timestamp& startTime)
 
 void GenerateFile()
 {
-    LOG_DEBUG("> Start generate file...");
+    //LOG_DEBUG("> Start generate file...");
 
     // Path to file
     fs::path path = fs::path(FILE_PATH);
@@ -65,12 +78,8 @@ void GenerateFile()
     // Get start time
     Poco::Timestamp startTime;
 
-    auto numbersCount = 20000;
-    auto numbersMin = 1;
-    auto numbersMax = 100;
-
-    LOG_DEBUG("> File (%s) created", path.filename().generic_string().c_str());
-    LOG_DEBUG("> Start adding numbers. Numbers count (%i). Min/max (%u/%u)", numbersCount, numbersMin, numbersMax);
+    //LOG_DEBUG("> File (%s) created", path.filename().generic_string().c_str());
+    //LOG_DEBUG("> Start adding numbers. Numbers count (%i). Min/max (%u/%u)", numbersCount, numbersMin, numbersMax);
 
     std::random_device random_device; // Источник энтропии.
     std::mt19937 generator(random_device()); // Генератор случайных чисел.
@@ -87,14 +96,12 @@ void GenerateFile()
 
     file.close();
 
-    LOG_INFO("# -- File created in '%s'", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds).c_str());
+    //LOG_INFO("# -- File created in '%s'", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds).c_str());
+    fmt::print("# -- File created in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
 }
 
-void CheckFile()
+void GetNumbers()
 {
-    //std::scoped_lock<std::mutex> guard(_lock);
-    std::lock_guard<std::mutex> guard(_lock);
-
     auto fileText = Warhead::File::GetFileText(FILE_PATH);
 
     auto found = fileText.find_first_of('\n');
@@ -106,8 +113,6 @@ void CheckFile()
         return;
     }
 
-    std::vector<int> numbers;
-
     for (auto str : Warhead::Tokenize(fileText, ' ', false))
     {
         auto number = Warhead::StringTo<uint32>(str);
@@ -117,47 +122,93 @@ void CheckFile()
             continue;
         }
 
-        //LOG_DEBUG("> Add '%u'", *number);
-
-        numbers.emplace_back(*number);
+        _numbers.emplace_back(*number);
     }
 
-    LOG_INFO(" ");
-    LOG_INFO("> Added (%u) nubmers", numbers.size());
+    //LOG_INFO(" ");
+    //LOG_INFO("> Added (%u) nubmers", _numbers.size());
 
-    auto resultMinIndex = std::distance(numbers.begin(), std::min_element(numbers.begin(), numbers.end()));
-    int minElement = numbers.at(resultMinIndex);
-    int minCount = std::count(numbers.begin(), numbers.end(), minElement);
+    uint32 count = 0;
 
-    LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
+    for (auto const& itr : _numbers)
+    {
+        count++;
+
+        if (count >= numbersCount / 2 + 1)
+            break;
+
+        _numbers1.emplace_back(itr);
+    }
+
+    for (size_t i = numbersCount / 2; i < _numbers.size(); i++)
+    {
+        _numbers2.emplace_back(_numbers.at(i));
+    }
+}
+
+void CheckFile()
+{
+    auto resultMinIndex = std::distance(_numbers.begin(), std::min_element(_numbers.begin(), _numbers.end()));
+    int minElement = _numbers.at(resultMinIndex);
+    int minCount = std::count(_numbers.begin(), _numbers.end(), minElement);
+
+    //LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
+    fmt::print("> Min element at: {}. Count: {}\n", minElement, minCount);
+}
+
+void CheckFile1()
+{
+    //std::scoped_lock<std::mutex> guard(_lock);
+    std::lock_guard<std::mutex> guard(_lock);
+
+    auto resultMinIndex = std::distance(_numbers1.begin(), std::min_element(_numbers1.begin(), _numbers1.end()));
+    int minElement = _numbers1.at(resultMinIndex);
+    int minCount = std::count(_numbers1.begin(), _numbers1.end(), minElement);
+
+    //LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
+    fmt::print("> Min element at: {}. Count: {}\n", minElement, minCount);
+}
+
+void CheckFile2()
+{
+    //std::scoped_lock<std::mutex> guard(_lock);
+    std::lock_guard<std::mutex> guard(_lock);
+
+    auto resultMinIndex = std::distance(_numbers2.begin(), std::min_element(_numbers2.begin(), _numbers2.end()));
+    int minElement = _numbers2.at(resultMinIndex);
+    int minCount = std::count(_numbers2.begin(), _numbers2.end(), minElement);
+
+    //LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
+    fmt::print("> Min element at: {}. Count: {}\n", minElement, minCount);
 }
 
 int main()
 {
     GenerateFile();
+    GetNumbers();
 
     // Get start time
     Poco::Timestamp startTime;
 
-    CheckFile();
-
-    LOG_INFO("--");
-    LOG_INFO("# CheckFile done with 1 thread in '%s'", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds).c_str());
-    LOG_INFO("--");
-
-    startTime.update();
-
     std::vector<std::thread> threads;
 
-    threads.emplace_back(CheckFile);
     threads.emplace_back(CheckFile);
 
     for (auto& thr : threads)
         thr.join();
 
-    LOG_INFO("--");
-    LOG_INFO("# CheckFile done with 2 thread in '%s'", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds).c_str());
-    LOG_INFO("--");
+    fmt::print("# CheckFile done with 1 thread in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
+
+    startTime.update();
+
+    threads.clear();
+    threads.emplace_back(CheckFile1);
+    threads.emplace_back(CheckFile2);
+
+    for (auto& thr : threads)
+        thr.join();
+
+    fmt::print("# CheckFile done with 2 thread in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
 
     return 0;
 }
