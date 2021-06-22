@@ -165,6 +165,6 @@ void Log::outSys(LogLevel const level, std::string&& message)
     }
     catch (const Poco::Exception& e)
     {
-        printf("Log::outSys - %s\n", e.displayText().c_str());
+        fmt::print("Log::outSys - {}\n", e.displayText());
     }
 }

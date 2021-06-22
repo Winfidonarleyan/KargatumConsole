@@ -46,9 +46,18 @@ namespace
     constexpr auto FILE_PATH = "RandomNumbers.txt";
     std::mutex _lock;
 
-    constexpr auto numbersCount = 2000000;
+    constexpr auto numbersCount = 20000;
     constexpr auto numbersMin = 10;
-    constexpr auto numbersMax = 10000;
+    constexpr auto numbersMax = 100;
+}
+
+inline auto GetTimeDiff(SystemTimePoint timePoint)
+{
+    using namespace std::chrono;
+
+    // Get End Time
+    auto end = system_clock::now();
+    return duration_cast<Microseconds>(end - timePoint).count();
 }
 
 inline Poco::Timestamp::TimeDiff GetUSTimeDiffToNow(Poco::Timestamp& startTime)
@@ -79,7 +88,7 @@ void GenerateFile()
     Poco::Timestamp startTime;
 
     //LOG_DEBUG("> File (%s) created", path.filename().generic_string().c_str());
-    //LOG_DEBUG("> Start adding numbers. Numbers count (%i). Min/max (%u/%u)", numbersCount, numbersMin, numbersMax);
+    //LOG_DEBUG("> Start adding numbers. Numbers count (%i). Min/max ({}/{})", numbersCount, numbersMin, numbersMax);
 
     std::random_device random_device; // Источник энтропии.
     std::mt19937 generator(random_device()); // Генератор случайных чисел.
@@ -96,8 +105,10 @@ void GenerateFile()
 
     file.close();
 
-    //LOG_INFO("# -- File created in '%s'", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds).c_str());
-    fmt::print("# -- File created in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
+    LOG_INFO("# -- File created in '{}'", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds).c_str());
+    //std::string test = Warhead::StringFormat("# -- File created in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
+
+    //fmt::print("> {}", test);
 }
 
 void GetNumbers()
@@ -109,7 +120,7 @@ void GetNumbers()
         fileText = fileText.substr(found + 2LL);
     else
     {
-        LOG_FATAL("> In file (%s) not found array", FILE_PATH);
+        LOG_FATAL("> In file ({}) not found array", FILE_PATH);
         return;
     }
 
@@ -118,7 +129,7 @@ void GetNumbers()
         auto number = Warhead::StringTo<uint32>(str);
         if (!number)
         {
-            LOG_FATAL("> Number (%.*s) is incorrect!", STRING_VIEW_FMT_ARG(str));
+            LOG_FATAL("> Number ({}) is incorrect!", str);
             continue;
         }
 
@@ -126,7 +137,7 @@ void GetNumbers()
     }
 
     //LOG_INFO(" ");
-    //LOG_INFO("> Added (%u) nubmers", _numbers.size());
+    //LOG_INFO("> Added ({}) nubmers", _numbers.size());
 
     uint32 count = 0;
 
@@ -146,69 +157,12 @@ void GetNumbers()
     }
 }
 
-void CheckFile()
-{
-    auto resultMinIndex = std::distance(_numbers.begin(), std::min_element(_numbers.begin(), _numbers.end()));
-    int minElement = _numbers.at(resultMinIndex);
-    int minCount = std::count(_numbers.begin(), _numbers.end(), minElement);
-
-    //LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
-    fmt::print("> Min element at: {}. Count: {}\n", minElement, minCount);
-}
-
-void CheckFile1()
-{
-    //std::scoped_lock<std::mutex> guard(_lock);
-    std::lock_guard<std::mutex> guard(_lock);
-
-    auto resultMinIndex = std::distance(_numbers1.begin(), std::min_element(_numbers1.begin(), _numbers1.end()));
-    int minElement = _numbers1.at(resultMinIndex);
-    int minCount = std::count(_numbers1.begin(), _numbers1.end(), minElement);
-
-    //LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
-    fmt::print("> Min element at: {}. Count: {}\n", minElement, minCount);
-}
-
-void CheckFile2()
-{
-    //std::scoped_lock<std::mutex> guard(_lock);
-    std::lock_guard<std::mutex> guard(_lock);
-
-    auto resultMinIndex = std::distance(_numbers2.begin(), std::min_element(_numbers2.begin(), _numbers2.end()));
-    int minElement = _numbers2.at(resultMinIndex);
-    int minCount = std::count(_numbers2.begin(), _numbers2.end(), minElement);
-
-    //LOG_INFO("> Min element at: %i. Count: %i", minElement, minCount);
-    fmt::print("> Min element at: {}. Count: {}\n", minElement, minCount);
-}
-
 int main()
 {
-    GenerateFile();
-    GetNumbers();
+    //GenerateFile();
+    //GetNumbers();
 
-    // Get start time
-    Poco::Timestamp startTime;
-
-    std::vector<std::thread> threads;
-
-    threads.emplace_back(CheckFile);
-
-    for (auto& thr : threads)
-        thr.join();
-
-    fmt::print("# CheckFile done with 1 thread in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
-
-    startTime.update();
-
-    threads.clear();
-    threads.emplace_back(CheckFile1);
-    threads.emplace_back(CheckFile2);
-
-    for (auto& thr : threads)
-        thr.join();
-
-    fmt::print("# CheckFile done with 2 thread in {}\n", Warhead::Time::ToTimeString<Microseconds>(GetUSTimeDiffToNow(startTime), TimeOutput::Microseconds));
+    LOG_INFO("{:s}", true);
 
     return 0;
 }

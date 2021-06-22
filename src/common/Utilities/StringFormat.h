@@ -19,7 +19,8 @@
 #define _STRING_FORMAT_H_
 
 #include "Define.h"
-#include <fmt/printf.h>
+//#include <fmt/core.h>
+#include <fmt/format.h>
 
 namespace Warhead
 {
@@ -29,7 +30,7 @@ namespace Warhead
     {
         try
         {
-            return fmt::sprintf(std::forward<Format>(fmt), std::forward<Args>(args)...);
+            return fmt::format(std::forward<Format>(fmt), std::forward<Args>(args)...);
         }
         catch (const fmt::format_error& formatError)
         {
@@ -45,7 +46,7 @@ namespace Warhead
     }
 
     /// Returns true if the given std::string is empty.
-    inline bool IsFormatEmptyOrNull(std::string const& fmt)
+    inline bool IsFormatEmptyOrNull(std::string_view fmt)
     {
         return fmt.empty();
     }

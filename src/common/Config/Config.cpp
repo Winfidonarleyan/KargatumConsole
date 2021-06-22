@@ -51,7 +51,7 @@ namespace
     {
         std::string message = Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...);
 
-        LOG_ERROR("%s", message.c_str());
+        LOG_ERROR("{}", message.c_str());
     }
 
     void AddKey(std::string const& optionName, std::string const& optionKey, bool replace = true)
@@ -61,7 +61,7 @@ namespace
         {
             if (!replace)
             {
-                LOG_ERROR("server", "> Config: Option '%s' is exist! Option key - '%s'", optionName.c_str(), itr->second.c_str());
+                LOG_ERROR("server", "> Config: Option '{}' is exist! Option key - '{}'", optionName.c_str(), itr->second.c_str());
                 return;
             }
 
@@ -76,7 +76,7 @@ namespace
         std::ifstream in(file);
 
         if (in.fail())
-            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Failed open file '%s'", file.c_str()));
+            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Failed open file '{}'", file.c_str()));
 
         uint32 count = 0;
         uint32 lineNumber = 0;
@@ -87,7 +87,7 @@ namespace
             auto const& itr = fileConfigs.find(confOption);
             if (itr != fileConfigs.end())
             {
-                PrintError(file, "> Config::LoadFile: Dublicate key name '%s' in config file '%s'", std::string(confOption).c_str(), file.c_str());
+                PrintError(file, "> Config::LoadFile: Dublicate key name '{}' in config file '{}'", std::string(confOption).c_str(), file.c_str());
                 return true;
             }
 
@@ -102,7 +102,7 @@ namespace
 
             // read line error
             if (!in.good() && !in.eof())
-                throw ConfigException(Warhead::StringFormat("> Config::LoadFile: Failure to read line number %u in file '%s'", lineNumber, file.c_str()));
+                throw ConfigException(Warhead::StringFormat("> Config::LoadFile: Failure to read line number %u in file '{}'", lineNumber, file.c_str()));
 
             // remove whitespace in line
             line = Warhead::String::Trim(line, in.getloc());
@@ -128,7 +128,7 @@ namespace
 
             if (equal_pos == std::string::npos || equal_pos == line.length())
             {
-                PrintError(file, "> Config::LoadFile: Failure to read line number %u in file '%s'. Skip this line", lineNumber, file.c_str());
+                PrintError(file, "> Config::LoadFile: Failure to read line number %u in file '{}'. Skip this line", lineNumber, file.c_str());
                 continue;
             }
 
@@ -148,7 +148,7 @@ namespace
 
         // No lines read
         if (!count)
-            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Empty file '%s'", file.c_str()));
+            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Empty file '{}'", file.c_str()));
 
         // Add correct keys if file load without errors
         for (auto const& [entry, key] : fileConfigs)
@@ -164,7 +164,7 @@ namespace
         }
         catch (const std::exception& e)
         {
-            PrintError(file, "> %s", e.what());
+            PrintError(file, "> {}", e.what());
         }
 
         return false;
@@ -198,7 +198,7 @@ T ConfigMgr::GetValueDefault(std::string const& name, T const& def, bool showLog
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Missing name %s in config, add \"%s = %s\"",
+            LOG_ERROR("server", "> Config: Missing name {} in config, add \"{} = {}\"",
                 name.c_str(), name.c_str(), Warhead::ToString(def).c_str());
         }
 
@@ -210,7 +210,7 @@ T ConfigMgr::GetValueDefault(std::string const& name, T const& def, bool showLog
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Bad value defined for name '%s', going to use '%s' instead",
+            LOG_ERROR("server", "> Config: Bad value defined for name '{}', going to use '{}' instead",
                 name.c_str(), Warhead::ToString(def).c_str());
         }
 
@@ -228,7 +228,7 @@ std::string ConfigMgr::GetValueDefault<std::string>(std::string const& name, std
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Missing name %s in config, add \"%s = %s\"",
+            LOG_ERROR("server", "> Config: Missing name {} in config, add \"{} = {}\"",
                 name.c_str(), name.c_str(), def.c_str());
         }
 
@@ -254,7 +254,7 @@ WH_COMMON_API bool ConfigMgr::GetOption<bool>(std::string const& name, bool cons
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Bad value defined for name '%s', going to use '%s' instead",
+            LOG_ERROR("server", "> Config: Bad value defined for name '{}', going to use '{}' instead",
                 name.c_str(), def ? "true" : "false");
         }
 

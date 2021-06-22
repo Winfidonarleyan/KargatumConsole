@@ -91,7 +91,7 @@ namespace
         auto const& itr = filesSize.find(fileName);
         if (itr == filesSize.end())
         {
-            LOG_FATAL("> File '%s' not found!", fileName.c_str());
+            LOG_FATAL("> File '{}' not found!", fileName.c_str());
             return false;
         }
 
@@ -103,7 +103,7 @@ namespace
         auto const& itr = filesSizeCustom.find(fileName);
         if (itr == filesSizeCustom.end())
         {
-            LOG_FATAL("> File '%s' not found!", fileName.c_str());
+            LOG_FATAL("> File '{}' not found!", fileName.c_str());
             return false;
         }
 
@@ -115,7 +115,7 @@ namespace
         auto const& itr = filesHash.find(fileName);
         if (itr == filesHash.end())
         {
-            LOG_FATAL("> File '%s' not found!", fileName.c_str());
+            LOG_FATAL("> File '{}' not found!", fileName.c_str());
             return false;
         }
 
@@ -235,17 +235,17 @@ namespace
 
             if (!IsSameFileSize(fileName, fileSize))
             {
-                LOG_INFO("> File '%s' - Modifed", fileName.c_str());
+                LOG_INFO("> File '{}' - Modifed", fileName.c_str());
                 count++;
             }
 
             /*if (fileSize > 100000000)
-                LOG_INFO("> File '%s' - %s", fileName.c_str(),  ? "Correct" : "Incorrect");
+                LOG_INFO("> File '{}' - {}", fileName.c_str(),  ? "Correct" : "Incorrect");
             else
             {
                 auto const& hash = Warhead::Crypto::GetMD5HashFromFile(path);
 
-                LOG_INFO("> File '%s' - %s", fileName.c_str(), IsSameFileHash(fileName, hash) ? "Correct" : "Incorrect");
+                LOG_INFO("> File '{}' - {}", fileName.c_str(), IsSameFileHash(fileName, hash) ? "Correct" : "Incorrect");
             }*/
         }
 
@@ -270,9 +270,9 @@ namespace
             auto const& fileSize = Warhead::File::GetFileSize(path);
 
             if (IsAppliedClientFile(fileName))
-                LOG_INFO("> Custom file '%s' - '%u' using by client", fileName.c_str(), fileSize);
+                LOG_INFO("> Custom file '{}' - '{}' using by client", fileName.c_str(), fileSize);
             else
-                LOG_INFO("> Custom file '%s' - '%u' useless. Client not used this file, need delete'", fileName.c_str(), fileSize);
+                LOG_INFO("> Custom file '{}' - '{}' useless. Client not used this file, need delete'", fileName.c_str(), fileSize);
         }
 
         LOG_INFO("");
@@ -296,7 +296,7 @@ namespace
 
             if (!IsSameWowkaFileSize(fileName, fileSize))
             {
-                LOG_INFO("> File '%s' - Modifed or old", fileName.c_str());
+                LOG_INFO("> File '{}' - Modifed or old", fileName.c_str());
                 count++;
             }
         }
@@ -316,7 +316,7 @@ ClientCheck* ClientCheck::instance()
 
 void ClientCheck::Start()
 {
-    LOG_INFO("> Using path '%s'", currPath.absolute().toString().c_str());
+    LOG_INFO("> Using path '{}'", currPath.absolute().toString().c_str());
 
     if (!IsNormalDirectory())
     {
@@ -327,7 +327,7 @@ void ClientCheck::Start()
 
     LOG_INFO("");
 
-    LOG_INFO(">>> Check custom files...");    
+    LOG_INFO(">>> Check custom files...");
     CheckNonDefaultFiles();
 
     LOG_INFO(">>> Check default files...");

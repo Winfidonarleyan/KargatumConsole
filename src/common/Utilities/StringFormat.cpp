@@ -90,7 +90,7 @@ uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& 
     }
     catch (const Poco::Exception& e)
     {
-        LOG_FATAL("> Warhead::String::PatternReplace: %s", e.displayText());
+        LOG_FATAL("> Warhead::String::PatternReplace: {}", e.displayText());
     }
 
     return 0;

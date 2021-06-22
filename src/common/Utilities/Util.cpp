@@ -60,7 +60,7 @@ std::string Warhead::File::GetFileText(std::string const& path, bool openBinary 
 
     if (!in.is_open())
     {
-        LOG_FATAL("> Failed to open file (%s)", _path.generic_string().c_str());
+        LOG_FATAL("> Failed to open file ({})", _path.generic_string().c_str());
         return "";
     }
 

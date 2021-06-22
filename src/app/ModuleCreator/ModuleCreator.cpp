@@ -27,7 +27,7 @@ namespace
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: %s", e.displayText().c_str());
+            LOG_FATAL("> Failed create directory: {}", e.displayText().c_str());
         }
     }
 
@@ -44,7 +44,7 @@ namespace
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: %s", e.displayText().c_str());
+            LOG_FATAL("> Failed create directory: {}", e.displayText().c_str());
         }
 
         return true;
@@ -69,16 +69,16 @@ bool ModuleCreator::CreateBaseArgs(std::string const& moduleName)
 
     LOG_DEBUG("");
     LOG_DEBUG("Create defines:");
-    LOG_DEBUG("> scriptName - %s", scriptName.c_str());
-    LOG_DEBUG("> correctModuleName - %s", correctModuleName.c_str());
-    LOG_DEBUG("> pathToModule - %s", pathToModule.c_str());
-    LOG_DEBUG("> pathToModuleSrc - %s", pathToModuleSrc.c_str());
-    LOG_DEBUG("> defineText - %s", defineText.c_str());
+    LOG_DEBUG("> scriptName - {}", scriptName.c_str());
+    LOG_DEBUG("> correctModuleName - {}", correctModuleName.c_str());
+    LOG_DEBUG("> pathToModule - {}", pathToModule.c_str());
+    LOG_DEBUG("> pathToModuleSrc - {}", pathToModuleSrc.c_str());
+    LOG_DEBUG("> defineText - {}", defineText.c_str());
     LOG_DEBUG("");
 
     if (!MakeDirForNewModule(pathToModule))
     {
-        LOG_FATAL("> Module '%s' is exist!", correctModuleName.c_str());
+        LOG_FATAL("> Module '{}' is exist!", correctModuleName.c_str());
         return false;
     }
 
@@ -89,7 +89,7 @@ void ModuleCreator::AddLineInText(std::string& text, std::string&& message)
 {
     text += message + "\n";
 
-    LOG_TRACE("> Added line (%s)", message.c_str());
+    LOG_TRACE("> Added line ({})", message.c_str());
 }
 
 bool ModuleCreator::AddTextInFile(std::string const& path, std::string const& text)
@@ -100,7 +100,7 @@ bool ModuleCreator::AddTextInFile(std::string const& path, std::string const& te
     std::ofstream file(temp.generic_string());
     if (!file.is_open())
     {
-        LOG_FATAL("Failed to create file '%s'", temp.generic_string().c_str());
+        LOG_FATAL("Failed to create file '{}'", temp.generic_string().c_str());
         LOG_INFO("");
         return false;
     }
@@ -116,35 +116,35 @@ bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
     std::string cppFileName = GetScriptCPPFileName(moduleName);
     std::string hFileName = GetScriptHFileName(moduleName);
 
-    LOG_DEBUG("> Try create cpp file - %s", cppFileName.c_str());
+    LOG_DEBUG("> Try create cpp file - {}", cppFileName.c_str());
 
     std::string _text;
 
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
-    AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"{}\"", hFileName.c_str());
     AddLineInText(_text, "#include \"Log.h\"");
-    AddLineInText(_text, "#include \"%s.h\"", _IsWarheadModule ? "GameConfig" : "Config");
+    AddLineInText(_text, "#include \"{}.h\"", _IsWarheadModule ? "GameConfig" : "Config");
 
     if (!AddTextInFile(pathToModuleSrc + cppFileName, _text))
         return false;
 
-    LOG_INFO("> Created - %s", cppFileName.c_str());
-    LOG_DEBUG("> Try create h file - %s", hFileName.c_str());
+    LOG_INFO("> Created - {}", cppFileName.c_str());
+    LOG_DEBUG("> Try create h file - {}", hFileName.c_str());
 
     _text.clear();
 
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
-    AddLineInText(_text, "#ifndef _%s_H_", defineText.c_str());
-    AddLineInText(_text, "#define _%s_H_", defineText.c_str());
+    AddLineInText(_text, "#ifndef _{}_H_", defineText.c_str());
+    AddLineInText(_text, "#define _{}_H_", defineText.c_str());
     AddLineInText(_text, "");
-    AddLineInText(_text, "#endif /* _%s_H_ */", defineText.c_str());
+    AddLineInText(_text, "#endif /* _{}_H_ */", defineText.c_str());
 
     if (!AddTextInFile(pathToModuleSrc + hFileName, _text))
         return false;
 
-    LOG_INFO("> Created - %s", hFileName.c_str());
+    LOG_INFO("> Created - {}", hFileName.c_str());
 
     return true;
 }
@@ -153,30 +153,30 @@ bool ModuleCreator::CreateScriptLoader(std::string const& moduleName)
 {
     std::string fileName = GetScriptLoaderFileName(moduleName);
 
-    LOG_DEBUG("> Try create script loader - %s", fileName.c_str());
+    LOG_DEBUG("> Try create script loader - {}", fileName.c_str());
 
     std::string _text;
 
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
-    AddLineInText(_text, "#ifndef _%s_LOADER_H_", defineText.c_str());
-    AddLineInText(_text, "#define _%s_LOADER_H_", defineText.c_str());
+    AddLineInText(_text, "#ifndef _{}_LOADER_H_", defineText.c_str());
+    AddLineInText(_text, "#define _{}_LOADER_H_", defineText.c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "// From SC");
-    AddLineInText(_text, "void AddSC_%s();", scriptName.c_str());
+    AddLineInText(_text, "void AddSC_{}();", scriptName.c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "// Add all");
-    AddLineInText(_text, "void Add%sScripts()", scriptName.c_str());
+    AddLineInText(_text, "void Add{}Scripts()", scriptName.c_str());
     AddLineInText(_text, "{");
-    AddLineInText(_text, "   AddSC_%s();", scriptName.c_str());
+    AddLineInText(_text, "   AddSC_{}();", scriptName.c_str());
     AddLineInText(_text, "}");
     AddLineInText(_text, "");
-    AddLineInText(_text, "#endif /* _%s_LOADER_H_ */", defineText.c_str());
+    AddLineInText(_text, "#endif /* _{}_LOADER_H_ */", defineText.c_str());
 
     if (!AddTextInFile(pathToModuleSrc + fileName, _text))
         return false;
 
-    LOG_INFO("> Created script loader (%s)", fileName.c_str());
+    LOG_INFO("> Created script loader ({})", fileName.c_str());
 
     return true;
 }
@@ -186,24 +186,24 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     std::string SCFileName = GetSCCPPFileName(moduleName);
     std::string hFileName = GetScriptHFileName(moduleName);
 
-    LOG_DEBUG("> Try create cpp file - %s", SCFileName.c_str());
+    LOG_DEBUG("> Try create cpp file - {}", SCFileName.c_str());
 
     std::string _text;
 
     AddLineInText(_text, GetHeadText().c_str());
     AddLineInText(_text, "");
-    AddLineInText(_text, "#include \"%s\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"{}\"", hFileName.c_str());
     AddLineInText(_text, "#include \"Log.h\"");
     AddLineInText(_text, "#include \"ScriptMgr.h\"");
-    AddLineInText(_text, "#include \"%s.h\"", _IsWarheadModule ? "GameConfig" : "Config");
+    AddLineInText(_text, "#include \"{}.h\"", _IsWarheadModule ? "GameConfig" : "Config");
     AddLineInText(_text, "#include \"Chat.h\"");
     AddLineInText(_text, "#include \"Player.h\"");
     AddLineInText(_text, "#include \"ScriptedGossip.h\"");
     AddLineInText(_text, "");
-    AddLineInText(_text, "class %s_World : public WorldScript", scriptName.c_str());
+    AddLineInText(_text, "class {}_World : public WorldScript", scriptName.c_str());
     AddLineInText(_text, "{");
     AddLineInText(_text, "public:");
-    AddLineInText(_text, "    %s_World() : WorldScript(\"%s_World\") { }", scriptName.c_str(), scriptName.c_str());
+    AddLineInText(_text, "    {}_World() : WorldScript(\"{}_World\") { }", scriptName.c_str(), scriptName.c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "    void OnAfterConfigLoad(bool /*reload*/) override");
     AddLineInText(_text, "    {");
@@ -212,15 +212,15 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     AddLineInText(_text, "};");
     AddLineInText(_text, "");
     AddLineInText(_text, "// Group all custom scripts");
-    AddLineInText(_text, "void AddSC_%s()", scriptName.c_str());
+    AddLineInText(_text, "void AddSC_{}()", scriptName.c_str());
     AddLineInText(_text, "{");
-    AddLineInText(_text, "    new %s_World();", scriptName.c_str());
+    AddLineInText(_text, "    new {}_World();", scriptName.c_str());
     AddLineInText(_text, "}");
 
     if (!AddTextInFile(pathToModuleSrc + SCFileName, _text))
         return false;
 
-    LOG_INFO("> Created - %s", SCFileName.c_str());
+    LOG_INFO("> Created - {}", SCFileName.c_str());
 
     return true;
 }
@@ -229,14 +229,14 @@ bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
 {
     std::string configFileName = GetConfigFileName(moduleName);
 
-    LOG_DEBUG("> Try create config file - %s", configFileName.c_str());
+    LOG_DEBUG("> Try create config file - {}", configFileName.c_str());
 
     std::string _text;
 
     AddLineInText(_text, GetHeadText(true).c_str());
     AddLineInText(_text, "");
     AddLineInText(_text, "########################################");
-    AddLineInText(_text, "# %s module configuration", GetScriptsName(moduleName).c_str());
+    AddLineInText(_text, "# {} module configuration", GetScriptsName(moduleName).c_str());
     AddLineInText(_text, "########################################");
     AddLineInText(_text, "[worldserver]");
     AddLineInText(_text, "");
@@ -247,7 +247,7 @@ bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
     if (!AddTextInFile(pathToModule + "/conf/" + configFileName, _text))
         return false;
 
-    LOG_INFO("> Created - %s", configFileName.c_str());
+    LOG_INFO("> Created - {}", configFileName.c_str());
 
     return true;
 }
@@ -263,18 +263,18 @@ bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
     AddLineInText(_text, "# Add source files");
 
     if (_IsWarheadModule)
-        AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"%s\")", scriptName.c_str());
+        AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"{}\")", scriptName.c_str());
     else
     {
-        AddLineInText(_text, "AC_ADD_SCRIPT(\"${CMAKE_CURRENT_LIST_DIR}/src/%s\")", GetSCCPPFileName(moduleName).c_str());
+        AddLineInText(_text, "AC_ADD_SCRIPT(\"${CMAKE_CURRENT_LIST_DIR}/src/{}\")", GetSCCPPFileName(moduleName).c_str());
         AddLineInText(_text, "");
         AddLineInText(_text, "# Add scripts to script loader");
-        AddLineInText(_text, "AC_ADD_SCRIPT_LOADER(\"%s\" \"${CMAKE_CURRENT_LIST_DIR}/src/%s\")", scriptName.c_str(), GetScriptLoaderFileName(moduleName).c_str());
+        AddLineInText(_text, "AC_ADD_SCRIPT_LOADER(\"{}\" \"${CMAKE_CURRENT_LIST_DIR}/src/{}\")", scriptName.c_str(), GetScriptLoaderFileName(moduleName).c_str());
     }
 
     AddLineInText(_text, "");
     AddLineInText(_text, "# Add config file");
-    AddLineInText(_text, "%s_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/%s\")", _IsWarheadModule ? "WH" : "AC", GetConfigFileName(moduleName).c_str());
+    AddLineInText(_text, "{}_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/{}\")", _IsWarheadModule ? "WH" : "AC", GetConfigFileName(moduleName).c_str());
 
     if (!AddTextInFile(pathToModule + "/" + "CMakeLists.txt", _text))
         return false;
@@ -472,7 +472,7 @@ bool ModuleCreator::CreateBaseFiles()
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: %s", e.displayText().c_str());
+            LOG_FATAL("> Failed create directory: {}", e.displayText().c_str());
         }
     };
 
@@ -491,8 +491,8 @@ void ModuleCreator::CreateModule(std::string const& moduleName, bool isWarheadMo
     if (!CreateBaseArgs(moduleName))
         return;
 
-    LOG_INFO("Creating %sCore module - %s", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName.c_str());
-    LOG_INFO("> Move base module files to new module - %s", correctModuleName.c_str());
+    LOG_INFO("Creating {}Core module - {}", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName.c_str());
+    LOG_INFO("> Move base module files to new module - {}", correctModuleName.c_str());
 
     // #1. Create base files
     CreateBaseFiles();

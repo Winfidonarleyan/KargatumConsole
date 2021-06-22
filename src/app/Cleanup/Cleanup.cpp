@@ -79,14 +79,14 @@ namespace
     void GetStats(uint32 startTimeMS)
     {
         LOG_INFO("");
-        LOG_INFO("> Cleanup: ended cleanup for '%s'", _path.generic_string().c_str());
-        LOG_INFO("# -- Found files (%u)", filesFoundCount);
-        LOG_INFO("# -- Replace files (%u)", filesReplaceCount);
+        LOG_INFO("> Cleanup: ended cleanup for '{}'", _path.generic_string().c_str());
+        LOG_INFO("# -- Found files ({})", filesFoundCount);
+        LOG_INFO("# -- Replace files ({})", filesReplaceCount);
 
         if (ReplaceLines)
-            LOG_INFO("# -- Replace lines (%u)", ReplaceLines);
+            LOG_INFO("# -- Replace lines ({})", ReplaceLines);
 
-        LOG_INFO("# -- Used time '%s'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
+        LOG_INFO("# -- Used time '{}'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
         LOG_INFO("");
     }
 
@@ -96,7 +96,7 @@ namespace
 
         FillFileList(_path);
 
-        LOG_INFO("> Cleanup: Found '%u' files", filesFoundCount);
+        LOG_INFO("> Cleanup: Found '{}' files", filesFoundCount);
     }
 
     // General functions
@@ -110,12 +110,12 @@ namespace
 
         filesReplaceCount++;
         ReplaceLines += replaceCount;
-        LOG_INFO("%u. File (%s). Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
+        LOG_INFO("{}. File ({}). Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
 
         std::ofstream file(path);
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -133,12 +133,12 @@ namespace
 
         filesReplaceCount++;
         ReplaceLines += replaceCount;
-        LOG_INFO("%u. '%s'. Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
+        LOG_INFO("{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
 
         std::ofstream file(path);
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -241,12 +241,12 @@ namespace
 
         filesReplaceCount++;
 
-        LOG_INFO("%u. '%s'", filesReplaceCount, path.filename().generic_string().c_str());
+        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
 
         std::ofstream file(path.c_str());
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -317,7 +317,7 @@ namespace
                 _includes.emplace_back(str);
 
                 if (IsSameInclude(str))
-                    LOG_WARN("> Same include '%s' - '%s'", std::string(str).c_str(), path.generic_string().c_str());
+                    LOG_WARN("> Same include '{}' - '{}'", std::string(str).c_str(), path.generic_string().c_str());
                 else
                     _includesUniqueue.emplace_back(str);
             }
@@ -331,12 +331,12 @@ namespace
 
         filesReplaceCount++;
 
-        LOG_INFO("%u. '%s'", filesReplaceCount, path.filename().generic_string().c_str());
+        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
 
         std::ofstream file(path.c_str());
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -403,12 +403,12 @@ namespace
 
         filesReplaceCount++;
 
-        LOG_INFO("%u. '%s'", filesReplaceCount, path.filename().generic_string().c_str());
+        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
 
         std::ofstream file(path);
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -456,7 +456,7 @@ namespace
 
             count++;
 
-            LOG_INFO("%u. '%s' - %u", count, strInclude.c_str(), countInclude);
+            LOG_INFO("{}. '{}' - {}", count, strInclude.c_str(), countInclude);
         }
     }
 
@@ -507,7 +507,7 @@ namespace
         {
             count++;
 
-            LOG_INFO("%u. '%s'", count, option.c_str());
+            LOG_INFO("{}. '{}'", count, option.c_str());
             fileText.append("\"" + option + "\"," + "\n");
         }
 
@@ -525,7 +525,7 @@ namespace
         std::ofstream file(filePath);
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", filePath.c_str());
+            LOG_FATAL("Failed open file \"{}\"!", filePath.c_str());
             return;
         }
 
@@ -542,7 +542,7 @@ namespace
             auto const& itr = _configOptions.find(find);
             if (itr != _configOptions.end())
             {
-                LOG_FATAL("> Dubicate option (%s)", find.c_str());
+                LOG_FATAL("> Dubicate option ({})", find.c_str());
                 return true;
             }
 
@@ -617,7 +617,7 @@ namespace
                         auto resIndex2 = resIndex1.substr(0, foundIndex1);
 
                         _configOptions.emplace(resIndex2, resMgr2);
-                        //LOG_INFO("> %s - %s", GetStringFnOld(std::string(resIndex2)).c_str(), GetStringFnNew(std::string(resMgr2)).c_str());
+                        //LOG_INFO("> {} - {}", GetStringFnOld(std::string(resIndex2)).c_str(), GetStringFnNew(std::string(resMgr2)).c_str());
                     }
                 }
             }
@@ -627,7 +627,7 @@ namespace
 
         for (auto const& filePath : _localeFileStorage)
         {
-            LOG_TRACE("> Replace file - (%s)", filePath.generic_string().c_str());
+            LOG_TRACE("> Replace file - ({})", filePath.generic_string().c_str());
 
             std::string fileText = Warhead::File::GetFileText(filePath.generic_string());
             std::string origText = fileText;
@@ -641,7 +641,7 @@ namespace
             std::ofstream file(filePath);
             if (!file.is_open())
             {
-                LOG_FATAL("Failed open file \"%s\"!", filePath.generic_string().c_str());
+                LOG_FATAL("Failed open file \"{}\"!", filePath.generic_string().c_str());
                 continue;
             }
 
@@ -675,7 +675,7 @@ void Cleanup::RemoveWhitespace()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '{}'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
     ReplaceLines = 0;
@@ -704,7 +704,7 @@ void Cleanup::ReplaceTabs()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (replace tabs) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (replace tabs) for '{}'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
     ReplaceLines = 0;
@@ -726,7 +726,7 @@ void Cleanup::SortIncludes()
     enbaleCheckFirstInclude = sConfigMgr->GetOption<bool>("Cleanup.CleanInclude.CheckFirst.Enable", true);
 
     LOG_INFO("# -- Sort Includes options: ");
-    LOG_INFO("> Skip check first include - '%s'", enbaleCheckFirstInclude ? "true" : "false");
+    LOG_INFO("> Skip check first include - '{:s}'", enbaleCheckFirstInclude);
     LOG_INFO("# --");
     LOG_INFO("> Start cleanup? [yes (default) / no]");
 
@@ -738,7 +738,7 @@ void Cleanup::SortIncludes()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (sort includes) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (sort includes) for '{}'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
     ReplaceLines = 0;
@@ -767,7 +767,7 @@ void Cleanup::CheckSameIncludes()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (same includes) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (same includes) for '{}'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
     ReplaceLines = 0;
@@ -796,7 +796,7 @@ void Cleanup::CheckExtraLogs()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start cleanup (remove extra logs define) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (remove extra logs define) for '{}'", _path.generic_string().c_str());
 
     filesReplaceCount = 0;
     ReplaceLines = 0;
@@ -825,7 +825,7 @@ void Cleanup::CheckUsingIncludesCount()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start job (check includes count) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start job (check includes count) for '{}'", _path.generic_string().c_str());
 
     ::CheckIncludesInFile();
 }
@@ -848,7 +848,7 @@ void Cleanup::CheckConfigOptions(std::string const& configType)
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start job (check config options '%s') for '%s'", configType.c_str(), _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start job (check config options '{}') for '{}'", configType.c_str(), _path.generic_string().c_str());
 
     ::CheckConfigOptions(configType);
 }
@@ -871,7 +871,7 @@ void Cleanup::ReplaceConfigOptions()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Cleanup: Start job (replace config options) for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start job (replace config options) for '{}'", _path.generic_string().c_str());
 
     ::ReplaceOldAPIConfigOptions("bool");
     ::ReplaceOldAPIConfigOptions("float");
@@ -887,11 +887,11 @@ bool Cleanup::SetPath(std::string const& path)
 
     if (!fs::is_directory(path))
     {
-        LOG_FATAL("> Cleanup: Path '%s' in not directory!", path.c_str());
+        LOG_FATAL("> Cleanup: Path '{}' in not directory!", path.c_str());
         return false;
     }
 
-    LOG_INFO("> Cleanup: Added path '%s'", path.c_str());
+    LOG_INFO("> Cleanup: Added path '{}'", path.c_str());
 
     _path = fs::path(path);
 
@@ -950,7 +950,7 @@ void Cleanup::SendPathInfo()
 
         for (auto const& [index, _path] : _pathList)
         {
-            LOG_INFO("%u. '%s'", index, _path.c_str());
+            LOG_INFO("{}. '{}'", index, _path.c_str());
         }
 
         LOG_INFO("# --");
@@ -966,7 +966,7 @@ void Cleanup::SendPathInfo()
             SendPathInfo();
     }
     else
-        LOG_INFO(">> Entered path '%s'", pathInfo.c_str());
+        LOG_INFO(">> Entered path '{}'", pathInfo.c_str());
 
     if (!IsCorrectPath())
         SendPathInfo();
@@ -992,11 +992,11 @@ void Cleanup::LoadPathInfo()
 
     for (auto const& itr : tokens)
     {
-        LOG_DEBUG("> Added path '%s'. Index %u", std::string(itr).c_str(), index);
+        LOG_DEBUG("> Added path '{}'. Index {}", std::string(itr).c_str(), index);
         _pathList.emplace(index, itr);
         index++;
     }
 
-    LOG_INFO("> Loaded %u paths", static_cast<uint32>(_pathList.size()));
+    LOG_INFO("> Loaded {} paths", static_cast<uint32>(_pathList.size()));
     LOG_INFO("--");
 }

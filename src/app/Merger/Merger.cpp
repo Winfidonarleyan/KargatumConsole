@@ -75,12 +75,12 @@ namespace
         filesReplaceCount++;
         ReplaceLines += count;
 
-        LOG_INFO("%u. '%s'. Replace (%u)", filesReplaceCount, path.filename().generic_string().c_str(), count);
+        LOG_INFO("{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), count);
 
         std::ofstream file(path);
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"%s\"!", path.generic_string().c_str());
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -91,14 +91,14 @@ namespace
     void GetStats(uint32 startTimeMS)
     {
         LOG_INFO("");
-        LOG_INFO("> Merger: ended correct for '%s'", _path.generic_string().c_str());
-        LOG_INFO("# -- Found files (%u)", filesFoundCount);
-        LOG_INFO("# -- Replace files (%u)", filesReplaceCount);
+        LOG_INFO("> Merger: ended correct for '{}'", _path.generic_string().c_str());
+        LOG_INFO("# -- Found files ({})", filesFoundCount);
+        LOG_INFO("# -- Replace files ({})", filesReplaceCount);
 
         if (ReplaceLines)
-            LOG_INFO("# -- Replace lines (%u)", ReplaceLines);
+            LOG_INFO("# -- Replace lines ({})", ReplaceLines);
 
-        LOG_INFO("# -- Used time '%s'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
+        LOG_INFO("# -- Used time '{}'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
         LOG_INFO("");
     }
 
@@ -113,7 +113,7 @@ namespace
 
         FillFileList(_path);
 
-        LOG_INFO("> Merger: Found '%u' files", filesFoundCount);
+        LOG_INFO("> Merger: Found '{}' files", filesFoundCount);
     }
 }
 
@@ -132,7 +132,7 @@ void Merger::Init()
     auto Replace = [](std::string const& replaceFrom, std::string const& replaceTo)
     {
         LOG_INFO("");
-        LOG_INFO("> Merger: Start replace from '%s' to '%s'", replaceFrom.c_str(), replaceTo.c_str());
+        LOG_INFO("> Merger: Start replace from '{}' to '{}'", replaceFrom.c_str(), replaceTo.c_str());
 
         filesReplaceCount = 0;
         ReplaceLines = 0;
@@ -140,8 +140,8 @@ void Merger::Init()
         for (auto const& filePath : _localeFileStorage)
             Correct(filePath, replaceFrom, replaceTo);
 
-        LOG_INFO("> Merger: Replace files (%u)", filesReplaceCount);
-        LOG_INFO("> Merger: Replace lines (%u)", ReplaceLines);
+        LOG_INFO("> Merger: Replace files ({})", filesReplaceCount);
+        LOG_INFO("> Merger: Replace lines ({})", ReplaceLines);
     };
 
     LOG_INFO("> Start merge correct? [yes (default) / no]");
@@ -154,7 +154,7 @@ void Merger::Init()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Merger: Start correct for '%s'", _path.generic_string().c_str());
+    LOG_INFO("> Merger: Start correct for '{}'", _path.generic_string().c_str());
 
     Replace("TrinityCore Project", "WarheadCore Project");
     Replace("TC_LOG", "LOG");
@@ -172,11 +172,11 @@ bool Merger::SetPath(std::string const& path)
 
     if (!fs::is_directory(path))
     {
-        LOG_FATAL("> Merger: Path '%s' in not directory!", path.c_str());
+        LOG_FATAL("> Merger: Path '{}' in not directory!", path.c_str());
         return false;
     }
 
-    LOG_INFO("> Merger: Added path '%s'", path.c_str());
+    LOG_INFO("> Merger: Added path '{}'", path.c_str());
 
     _path = fs::path(path);
 
@@ -253,7 +253,7 @@ void Merger::SendPathInfo()
             SendPathInfo();
     }
     else
-        LOG_INFO(">> Entered path '%s'", pathInfo.c_str());
+        LOG_INFO(">> Entered path '{}'", pathInfo.c_str());
 
     if (!IsCorrectPath())
         SendPathInfo();
