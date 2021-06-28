@@ -71,18 +71,15 @@ void Log::InitSystemLogger()
     // Start console channel
     AutoPtr<PatternFormatter> _ConsolePattern(new PatternFormatter);
 
-#define LOG_CATCH \
-        catch (const Poco::Exception& e) \
-        { \
-            printf("Log::InitSystemLogger - %s\n", e.displayText().c_str()); \
-        } \
-
     try
     {
         _ConsolePattern->setProperty("pattern", "%H:%M:%S %t");
         _ConsolePattern->setProperty("times", "local");
     }
-    LOG_CATCH
+    catch (const Poco::Exception& e)
+    {
+        fmt::print("Log::InitSystemLogger - {}\n", e.displayText().c_str());
+    }
 
     AutoPtr<WindowsColorConsoleChannel> _ConsoleChannel(new WindowsColorConsoleChannel);
 
@@ -97,13 +94,19 @@ void Log::InitSystemLogger()
         _ConsoleChannel->setProperty("debugColor", "lightMagenta");
         _ConsoleChannel->setProperty("traceColor", "green");
     }
-    LOG_CATCH
+    catch (const Poco::Exception& e)
+    {
+        fmt::print("Log::InitSystemLogger - {}\n", e.displayText().c_str());
+    }
 
     try
     {
         Logger::create("system", new FormattingChannel(_ConsolePattern, _ConsoleChannel), level);
     }
-    LOG_CATCH
+    catch (const Poco::Exception& e)
+    {
+        fmt::print("Log::InitSystemLogger - {}\n", e.displayText().c_str());
+    }
 
     highestLogLevel = level;
 }
@@ -127,7 +130,7 @@ void Log::SetLogLevel(LogLevel const level)
     Logger::get("system").setLevel(level);
 }
 
-void Log::outSys(LogLevel const level, std::string&& message)
+void Log::_outSys1(LogLevel const level, std::string&& message)
 {
     Logger& logger = Logger::get("system");
 
@@ -158,6 +161,48 @@ void Log::outSys(LogLevel const level, std::string&& message)
             break;
         case LOG_LEVEL_TRACE:
             logger.trace(message);
+            break;
+        default:
+            break;
+        }
+    }
+    catch (const Poco::Exception& e)
+    {
+        fmt::print("Log::outSys - {}\n", e.displayText());
+    }
+}
+
+void Log::_outSys(LogLevel level, std::string_view message)
+{
+    Logger& logger = Logger::get("system");
+
+    try
+    {
+        switch (level)
+        {
+        case LOG_LEVEL_FATAL:
+            logger.fatal(message.data());
+            break;
+        case LOG_LEVEL_CRITICAL:
+            logger.critical(message.data());
+            break;
+        case LOG_LEVEL_ERROR:
+            logger.error(message.data());
+            break;
+        case LOG_LEVEL_WARNING:
+            logger.warning(message.data());
+            break;
+        case LOG_LEVEL_NOTICE:
+            logger.notice(message.data());
+            break;
+        case LOG_LEVEL_INFO:
+            logger.information(fmt::format(message));
+            break;
+        case LOG_LEVEL_DEBUG:
+            logger.debug(message.data());
+            break;
+        case LOG_LEVEL_TRACE:
+            logger.trace(message.data());
             break;
         default:
             break;

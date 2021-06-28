@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "StringFormat.h"
+#include <fmt/color.h>
 
 enum LogLevel
 {
@@ -50,17 +51,23 @@ public:
     static Log* instance();
 
     void SetLogLevel(LogLevel const level);
-
     bool ShouldLog(LogLevel const level) const;
 
-    template<typename Format, typename... Args>
-    inline void outSys(LogLevel const level, Format&& fmt, Args&& ... args)
+    template<typename... Args>
+    inline void outSys(LogLevel const level, std::string_view fmt, Args&& ... args)
     {
-        outSys(level, Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
+        _outSys(level, fmt::format(fmt, std::forward<Args>(args)...));
+    }
+
+    template<typename Format, typename... Args>
+    inline void outSys1(LogLevel const level, Format&& fmt, Args&&... args)
+    {
+        _outSys1(level, fmt::format(std::forward<Format>(fmt), std::forward<Args>(args)...));
     }
 
 private:
-    void outSys(LogLevel level, std::string&& message);
+    void _outSys1(LogLevel level, std::string&& message);
+    void _outSys(LogLevel level, std::string_view message);
 
     void Initialize();
     void InitSystemLogger();
@@ -73,19 +80,38 @@ private:
     { \
         try \
         { \
-            sLog->outSys(level__, __VA_ARGS__); \
+            sLog->outSys(level__, fmt::format(__VA_ARGS__)); \
         } \
         catch (const std::exception& e) \
         { \
-            sLog->outSys(LOG_LEVEL_ERROR, "Wrong format occurred (%s) at %s:%u.", \
+            sLog->outSys(LOG_LEVEL_ERROR, "Wrong format occurred ({}) at '{}:{}'", \
                 e.what(), __FILE__, __LINE__); \
         } \
     }
 
-#define LOG_MSG_BODY(level__, ...)                                      \
-        do {                                                            \
-            if (sLog->ShouldLog(level__))                               \
-                LOG_EXCEPTION_FREE(level__, __VA_ARGS__);               \
+#define FMT_LOG_MSG_BODY(level__, ...)                            \
+        do {                                                  \
+            if (sLog->ShouldLog(level__))                     \
+                FMT_LOG_EXCEPTION_FREE(level__, __VA_ARGS__); \
+        } while (0)
+
+#define FMT_LOG_EXCEPTION_FREE(level__, ...) \
+    { \
+        try \
+        { \
+            sLog->outSys1(level__, fmt::format(__VA_ARGS__)); \
+        } \
+        catch (const std::exception& e) \
+        { \
+            sLog->outSys1(LOG_LEVEL_ERROR, "Wrong format occurred ({}) at '{}:{}'", \
+                e.what(), __FILE__, __LINE__); \
+        } \
+    }
+
+#define LOG_MSG_BODY(level__, ...)                            \
+        do {                                                  \
+            if (sLog->ShouldLog(level__))                     \
+                LOG_EXCEPTION_FREE(level__, __VA_ARGS__); \
         } while (0)
 
 // Fatal - 1
@@ -120,4 +146,9 @@ private:
 #define LOG_TRACE(...) \
     LOG_MSG_BODY(LOG_LEVEL_TRACE, __VA_ARGS__)
 
+#define FMT_LOG_ERROR(...) \
+    fmt::print(fmt::emphasis::bold | fg(fmt::color::red), "{} '{}:{}'\n", fmt::format(__VA_ARGS__), __FILE__, __LINE__);
+
+#define FMT_LOG_INFO(...) \
+    fmt::print(fmt::emphasis::bold | fg(fmt::color::dark_cyan), "{} '{}:{}'\n", fmt::format(__VA_ARGS__), __FILE__, __LINE__);
 #endif
