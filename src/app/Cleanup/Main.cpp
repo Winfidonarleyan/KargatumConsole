@@ -31,6 +31,7 @@ void SelectCleanup()
     LOG_INFO("# 4. Same includes");
     LOG_INFO("# 5. Clean ENABLE_EXTRA_LOGS");
     LOG_INFO("# 6. Check using includes");
+    LOG_INFO("# 7. Replace logging format");
     LOG_INFO("# --");
     LOG_INFO("# 10. Check bool configs");
     LOG_INFO("# 11. Check uint32 configs");
@@ -66,6 +67,9 @@ void SelectCleanup()
             break;
         case 6:
             sClean->CheckUsingIncludesCount();
+            break;
+        case 7:
+            sClean->ReplaceLoggingFormat();
             break;
         // Configs
         case 10:

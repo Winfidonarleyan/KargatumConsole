@@ -47,6 +47,21 @@ namespace
     // Config
     std::unordered_map<uint8, std::string> _pathList;
 
+    // Common functions
+    bool IsExitstText(std::string_view text, std::string_view textFind)
+    {
+        return text.find(textFind) != std::string::npos;
+    }
+
+    bool IsExitstText(std::string_view text, std::initializer_list<std::string_view> textFindList)
+    {
+        for (auto const& itr : textFindList)
+            if (!IsExitstText(text, itr))
+                return false;
+
+        return true;
+    }
+
     // Sort includes
     std::unordered_map<std::string, std::string> _textStore;
     bool enbaleCheckFirstInclude = true;
@@ -243,7 +258,7 @@ namespace
 
         LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
 
-        std::ofstream file(path.c_str());
+        std::ofstream file(path);
         if (!file.is_open())
         {
             LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
@@ -649,6 +664,100 @@ namespace
             file.close();
         }
     }
+
+    void ReplaceLoggingPattern(fs::path const& path)
+    {
+        std::string fileText = Warhead::File::GetFileText(path.generic_string());
+        std::string origText = fileText;
+
+        auto ReplacePattern = [](std::string& str, std::string_view from, std::string_view to, std::string_view::size_type start = 0)
+        {
+            std::string result;
+            std::string::size_type pos = 0;
+
+            result.append(str, 0, start);
+            pos = str.find(from, start);
+
+            if (pos != std::string::npos)
+            {
+                result.append(str, start, pos - start);
+                result.append(to);
+                start = pos + from.length();
+            }
+            else
+                result.append(str, start, str.size() - start);
+
+            str.swap(result);
+
+            return str;
+        };
+
+        std::unordered_map<std::string, std::string> textLine;
+
+        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
+        {
+            if (IsExitstText(str, { "LOG_", "%" }) ||
+                IsExitstText(str, "StringFormat(") ||
+                IsExitstText(str, "ASSERT") ||
+                IsExitstText(str, "PSendSysMessage") ||
+                IsExitstText(str, "PQuery") ||
+                IsExitstText(str, "PExecute") ||
+                IsExitstText(str, "SendNotification"))
+            {
+                std::string text{ str };
+
+                text = Warhead::String::ReplaceInPlace(text, "%s", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%u", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%hu", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%lu", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%llu", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%02u", "{:02}");
+                text = Warhead::String::ReplaceInPlace(text, "%03u", "{:03}");
+                text = Warhead::String::ReplaceInPlace(text, "%d", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%i", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%x", "{:x}");
+                text = Warhead::String::ReplaceInPlace(text, "%X", "{:X}");
+                text = Warhead::String::ReplaceInPlace(text, "%lx", "{:x}");
+                text = Warhead::String::ReplaceInPlace(text, "%lX", "{:X}");
+                text = Warhead::String::ReplaceInPlace(text, "%02X", "{:02X}");
+                text = Warhead::String::ReplaceInPlace(text, "%08X", "{:08X}");
+                text = Warhead::String::ReplaceInPlace(text, "%f", "{}");
+                text = Warhead::String::ReplaceInPlace(text, "%.1f", "{0:.1f}");
+                text = Warhead::String::ReplaceInPlace(text, "%.2f", "{0:.2f}");
+                text = Warhead::String::ReplaceInPlace(text, "%.3f", "{0:.3f}");
+                text = Warhead::String::ReplaceInPlace(text, "%.4f", "{0:.4f}");
+                text = Warhead::String::ReplaceInPlace(text, "%.5f", "{0:.5f}");
+                text = Warhead::String::ReplaceInPlace(text, "%3.1f", "{:3.1f}");
+                text = Warhead::String::ReplaceInPlace(text, "%%", "%");
+                text = Warhead::String::ReplaceInPlace(text, ".c_str()", "");
+
+                textLine.emplace(str, text);
+            }
+        }
+
+        if (textLine.empty())
+            return;
+
+        for (auto const& [_textOrig, _textReplaced] : textLine)
+            fileText = Warhead::String::ReplaceInPlace(fileText, _textOrig, _textReplaced);
+
+        if (fileText == origText)
+            return;
+
+        filesReplaceCount++;
+
+        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
+
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
+            return;
+        }
+
+        file.write(fileText.c_str(), fileText.size());
+        file.close();
+    }
 }
 
 Cleanup* Cleanup::instance()
@@ -878,6 +987,35 @@ void Cleanup::ReplaceConfigOptions()
     ::ReplaceOldAPIConfigOptions("int32");
     ::ReplaceOldAPIConfigOptions("uint32");
     ::ReplaceOldAPIConfigOptions("rate");
+}
+
+void Cleanup::ReplaceLoggingFormat()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h" });
+
+    LOG_INFO("> Start replace? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start replace (logging format) for '{}'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    for (auto const& filePath : _localeFileStorage)
+        ::ReplaceLoggingPattern(filePath);
+
+    GetStats(ms);
 }
 
 // Path helpers

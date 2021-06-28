@@ -33,6 +33,7 @@ public:
     void CheckUsingIncludesCount();
     void CheckConfigOptions(std::string const& configType);
     void ReplaceConfigOptions();
+    void ReplaceLoggingFormat();
 
     void SendPathInfo();
     void LoadPathInfo();
