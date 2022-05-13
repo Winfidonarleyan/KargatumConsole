@@ -310,7 +310,6 @@ std::istream& HTTPClientSession::receiveResponse(HTTPResponse& response)
 					networkException()->rethrow();
 				else
 					throw;
-				throw;
 			}
 		}
 		while (response.getStatus() == HTTPResponse::HTTP_CONTINUE);
@@ -465,6 +464,7 @@ void HTTPClientSession::proxyAuthenticateImpl(HTTPRequest& request, const ProxyC
 			_proxyDigestCreds.setPassword(proxyConfig.password);
 			proxyAuthenticateDigest(request);
 		}
+		break;
 
 	case PROXY_AUTH_NTLM:
 		if (_ntlmProxyAuthenticated)
@@ -479,6 +479,7 @@ void HTTPClientSession::proxyAuthenticateImpl(HTTPRequest& request, const ProxyC
 			proxyAuthenticateNTLM(request);
 			_ntlmProxyAuthenticated = true;
 		}
+		break;
 	}
 }
 

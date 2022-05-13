@@ -35,11 +35,11 @@ public:
 		_socket(socket)
 	{
 	}
-	
+
 	~TCPConnectionNotification()
 	{
 	}
-	
+
 	const StreamSocket& socket() const
 	{
 		return _socket;
@@ -47,6 +47,11 @@ public:
 
 private:
 	StreamSocket _socket;
+};
+
+
+class StopNotification: public Notification
+{
 };
 
 
@@ -66,7 +71,7 @@ TCPServerDispatcher::TCPServerDispatcher(TCPServerConnectionFactory::Ptr pFactor
 
 	if (!_pParams)
 		_pParams = new TCPServerParams;
-	
+
 	if (_pParams->getMaxThreads() == 0)
 		_pParams->setMaxThreads(threadPool.capacity());
 }
@@ -115,7 +120,7 @@ void TCPServerDispatcher::run()
 				endConnection();
 			}
 		}
-	
+
 		FastMutex::ScopedLock lock(_mutex);
 		if (_stopped || (_currentThreads > 1 && _queue.empty()))
 		{
@@ -131,7 +136,7 @@ namespace
 	static const std::string threadName("TCPServerConnection");
 }
 
-	
+
 void TCPServerDispatcher::enqueue(const StreamSocket& socket)
 {
 	FastMutex::ScopedLock lock(_mutex);
@@ -166,23 +171,24 @@ void TCPServerDispatcher::enqueue(const StreamSocket& socket)
 
 void TCPServerDispatcher::stop()
 {
+	FastMutex::ScopedLock lock(_mutex);
 	_stopped = true;
 	_queue.clear();
-	_queue.wakeUpAll();
+	_queue.enqueueNotification(new StopNotification);
 }
 
 
 int TCPServerDispatcher::currentThreads() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	return _currentThreads;
 }
 
 int TCPServerDispatcher::maxThreads() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	return _threadPool.capacity();
 }
 
@@ -190,7 +196,7 @@ int TCPServerDispatcher::maxThreads() const
 int TCPServerDispatcher::totalConnections() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	return _totalConnections;
 }
 
@@ -198,7 +204,7 @@ int TCPServerDispatcher::totalConnections() const
 int TCPServerDispatcher::currentConnections() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	return _currentConnections;
 }
 
@@ -206,7 +212,7 @@ int TCPServerDispatcher::currentConnections() const
 int TCPServerDispatcher::maxConcurrentConnections() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	return _maxConcurrentConnections;
 }
 
@@ -220,7 +226,7 @@ int TCPServerDispatcher::queuedConnections() const
 int TCPServerDispatcher::refusedConnections() const
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	return _refusedConnections;
 }
 
@@ -228,7 +234,7 @@ int TCPServerDispatcher::refusedConnections() const
 void TCPServerDispatcher::beginConnection()
 {
 	FastMutex::ScopedLock lock(_mutex);
-	
+
 	++_totalConnections;
 	++_currentConnections;
 	if (_currentConnections > _maxConcurrentConnections)

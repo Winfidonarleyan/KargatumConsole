@@ -258,15 +258,13 @@ public:
 		Poco::FastMutex::ScopedLock lock(_mutex);
 
 		poco_socket_t fd = socket.impl()->sockfd();
-		for (std::vector<pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it)
+		for (auto it = _pollfds.begin(); it != _pollfds.end(); ++it)
 		{
 			if (it->fd == fd)
 			{
 				it->events = 0;
-				if (mode & PollSet::POLL_READ)
-					it->events |= POLLIN;
-				if (mode & PollSet::POLL_WRITE)
-					it->events |= POLLOUT;
+				it->revents = 0;
+				setMode(it->fd, it->events, mode);
 			}
 		}
 	}
@@ -289,7 +287,7 @@ public:
 
 			if (!_removeSet.empty())
 			{
-				for (std::vector<pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end();)
+				for (auto it = _pollfds.begin(); it != _pollfds.end();)
 				{
 					if (_removeSet.find(it->fd) != _removeSet.end())
 					{
@@ -301,17 +299,13 @@ public:
 			}
 
 			_pollfds.reserve(_pollfds.size() + _addMap.size());
-			for (std::map<poco_socket_t, int>::iterator it = _addMap.begin(); it != _addMap.end(); ++it)
+			for (auto it = _addMap.begin(); it != _addMap.end(); ++it)
 			{
 				pollfd pfd;
 				pfd.fd = it->first;
 				pfd.events = 0;
 				pfd.revents = 0;
-				if (it->second & PollSet::POLL_READ)
-					pfd.events |= POLLIN;
-				if (it->second & PollSet::POLL_WRITE)
-					pfd.events |= POLLOUT;
-
+				setMode(pfd.fd, pfd.events, it->second);
 				_pollfds.push_back(pfd);
 			}
 			_addMap.clear();
@@ -325,9 +319,15 @@ public:
 		{
 			Poco::Timestamp start;
 #ifdef _WIN32
-			rc = WSAPoll(&_pollfds[0], static_cast<ULONG>(_pollfds.size()), static_cast<INT>(timeout.totalMilliseconds()));
+			rc = WSAPoll(&_pollfds[0], static_cast<ULONG>(_pollfds.size()), static_cast<INT>(remainingTime.totalMilliseconds()));
+			// see https://github.com/pocoproject/poco/issues/3248
+			if ((remainingTime > 0) && (rc > 0) && !hasSignaledFDs())
+			{
+				rc = -1;
+				WSASetLastError(WSAEINTR);
+			}
 #else
-			rc = ::poll(&_pollfds[0], _pollfds.size(), timeout.totalMilliseconds());
+			rc = ::poll(&_pollfds[0], _pollfds.size(), remainingTime.totalMilliseconds());
 #endif
 			if (rc < 0 && SocketImpl::lastError() == POCO_EINTR)
 			{
@@ -347,21 +347,25 @@ public:
 
 			if (!_socketMap.empty())
 			{
-				for (std::vector<pollfd>::iterator it = _pollfds.begin(); it != _pollfds.end(); ++it)
+				for (auto it = _pollfds.begin(); it != _pollfds.end(); ++it)
 				{
 					std::map<poco_socket_t, Socket>::const_iterator its = _socketMap.find(it->fd);
 					if (its != _socketMap.end())
 					{
-						if (it->revents & POLLIN)
+						if ((it->revents & POLLIN)
+#ifdef _WIN32
+						|| (it->revents & POLLHUP)
+#endif
+							)
 							result[its->second] |= PollSet::POLL_READ;
-						if (it->revents & POLLOUT)
+						if ((it->revents & POLLOUT)
+#ifdef _WIN32
+							&& (_wantPOLLOUT.find(it->fd) != _wantPOLLOUT.end())
+#endif
+							)
 							result[its->second] |= PollSet::POLL_WRITE;
 						if (it->revents & POLLERR)
 							result[its->second] |= PollSet::POLL_ERROR;
-#ifdef _WIN32
-						if (it->revents & POLLHUP)
-							result[its->second] |= PollSet::POLL_READ;
-#endif
 					}
 					it->revents = 0;
 				}
@@ -372,8 +376,52 @@ public:
 	}
 
 private:
+
+#ifdef _WIN32
+
+	void setMode(poco_socket_t fd, short& target, int mode)
+	{
+		if (mode & PollSet::POLL_READ)
+			target |= POLLIN;
+
+		if (mode & PollSet::POLL_WRITE)
+			_wantPOLLOUT.insert(fd);
+		else
+			_wantPOLLOUT.erase(fd);
+		target |= POLLOUT;
+	}
+
+	bool hasSignaledFDs()
+	{
+		for (const auto& pollfd : _pollfds)
+		{
+			if ((pollfd.revents | POLLOUT) &&
+				(_wantPOLLOUT.find(pollfd.fd) != _wantPOLLOUT.end()))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+#else
+
+	void setMode(poco_socket_t fd, short& target, int mode)
+	{
+		if (mode & PollSet::POLL_READ)
+			target |= POLLIN;
+
+		if (mode & PollSet::POLL_WRITE)
+			target |= POLLOUT;
+	}
+
+#endif
+
 	mutable Poco::FastMutex         _mutex;
 	std::map<poco_socket_t, Socket> _socketMap;
+#ifdef _WIN32
+	std::set<poco_socket_t>         _wantPOLLOUT;
+#endif
 	std::map<poco_socket_t, int>    _addMap;
 	std::set<poco_socket_t>         _removeSet;
 	std::vector<pollfd>             _pollfds;
@@ -439,7 +487,7 @@ public:
 		{
 			Poco::FastMutex::ScopedLock lock(_mutex);
 
-			for (PollSet::SocketModeMap::const_iterator it = _map.begin(); it != _map.end(); ++it)
+			for (auto it = _map.begin(); it != _map.end(); ++it)
 			{
 				poco_socket_t fd = it->first.impl()->sockfd();
 				if (fd != POCO_INVALID_SOCKET && it->second)
@@ -490,7 +538,7 @@ public:
 		{
 			Poco::FastMutex::ScopedLock lock(_mutex);
 
-			for (PollSet::SocketModeMap::const_iterator it = _map.begin(); it != _map.end(); ++it)
+			for (auto it = _map.begin(); it != _map.end(); ++it)
 			{
 				poco_socket_t fd = it->first.impl()->sockfd();
 				if (fd != POCO_INVALID_SOCKET)

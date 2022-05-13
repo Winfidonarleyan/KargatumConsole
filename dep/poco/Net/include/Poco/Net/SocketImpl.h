@@ -85,7 +85,7 @@ public:
 		/// If reuseAddress is true, sets the SO_REUSEADDR
 		/// socket option.
 
-	virtual void bind(const SocketAddress& address, bool reuseAddress, bool reusePort );
+	virtual void bind(const SocketAddress& address, bool reuseAddress, bool reusePort);
 		/// Bind a local address to the socket.
 		///
 		/// This is usually only done when establishing a server
@@ -115,7 +115,7 @@ public:
 		/// If the library has not been built with IPv6 support,
 		/// a Poco::NotImplementedException will be thrown.
 
-	virtual void bind6(const SocketAddress& address, bool reuseAddress, bool reusePort,  bool ipV6Only);
+	virtual void bind6(const SocketAddress& address, bool reuseAddress, bool reusePort, bool ipV6Only);
 		/// Bind a local IPv6 address to the socket.
 		///
 		/// This is usually only done when establishing a server
@@ -302,7 +302,7 @@ public:
 		/// as the system is free to adjust the value.
 
 	virtual void setReceiveTimeout(const Poco::Timespan& timeout);
-		/// Sets the send timeout for the socket.
+		/// Sets the receive timeout for the socket.
 		///
 		/// On systems that do not support SO_RCVTIMEO, a
 		/// workaround using poll() is provided.

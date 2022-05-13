@@ -34,8 +34,8 @@ class Net_API HostEntry
 	/// of IP addresses.
 {
 public:
-	typedef std::vector<std::string> AliasList;
-	typedef std::vector<IPAddress>   AddressList;
+	using AliasList = std::vector<std::string>;
+	using AddressList = std::vector<IPAddress>;
 	
 	HostEntry();
 		/// Creates an empty HostEntry.
@@ -76,6 +76,14 @@ public:
 		/// for the host.
 
 private:
+	template <typename C>
+	void removeDuplicates(C& list)
+	{
+		std::sort(list.begin(), list.end());
+		auto last = std::unique(list.begin(), list.end());
+		list.erase(last, list.end());
+	}
+
 	std::string _name;
 	AliasList   _aliases;
 	AddressList _addresses;

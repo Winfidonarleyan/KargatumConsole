@@ -118,11 +118,11 @@ bool SocketReactor::hasSocketHandlers()
 	if (!_pollSet.empty())
 	{
 		ScopedLock lock(_mutex);
-		for (EventHandlerMap::iterator it = _handlers.begin(); it != _handlers.end(); ++it)
+		for (auto& p: _handlers)
 		{
-			if (it->second->accepts(_pReadableNotification) ||
-				it->second->accepts(_pWritableNotification) ||
-				it->second->accepts(_pErrorNotification)) return true;
+			if (p.second->accepts(_pReadableNotification) ||
+				p.second->accepts(_pWritableNotification) ||
+				p.second->accepts(_pErrorNotification)) return true;
 		}
 	}
 
@@ -203,6 +203,15 @@ void SocketReactor::removeEventHandler(const Socket& socket, const Poco::Abstrac
 			_pollSet.remove(socket);
 		}
 		pNotifier->removeObserver(this, observer);
+
+		if (pNotifier->countObservers() > 0 && socket.impl()->sockfd() > 0)
+		{
+			int mode = 0;
+			if (pNotifier->accepts(_pReadableNotification)) mode |= PollSet::POLL_READ;
+			if (pNotifier->accepts(_pWritableNotification)) mode |= PollSet::POLL_WRITE;
+			if (pNotifier->accepts(_pErrorNotification))    mode |= PollSet::POLL_ERROR;
+			_pollSet.update(socket, mode);
+		}
 	}
 }
 
