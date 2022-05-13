@@ -10,5 +10,8 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 
+add_subdirectory(boost)
 add_subdirectory(fmt)
+add_subdirectory(openssl)
 add_subdirectory(poco)
+add_subdirectory(json)
