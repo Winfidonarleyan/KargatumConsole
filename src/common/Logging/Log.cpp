@@ -130,48 +130,6 @@ void Log::SetLogLevel(LogLevel const level)
     Logger::get("system").setLevel(level);
 }
 
-void Log::_outSys1(LogLevel const level, std::string&& message)
-{
-    Logger& logger = Logger::get("system");
-
-    try
-    {
-        switch (level)
-        {
-        case LOG_LEVEL_FATAL:
-            logger.fatal(message);
-            break;
-        case LOG_LEVEL_CRITICAL:
-            logger.critical(message);
-            break;
-        case LOG_LEVEL_ERROR:
-            logger.error(message);
-            break;
-        case LOG_LEVEL_WARNING:
-            logger.warning(message);
-            break;
-        case LOG_LEVEL_NOTICE:
-            logger.notice(message);
-            break;
-        case LOG_LEVEL_INFO:
-            logger.information(message);
-            break;
-        case LOG_LEVEL_DEBUG:
-            logger.debug(message);
-            break;
-        case LOG_LEVEL_TRACE:
-            logger.trace(message);
-            break;
-        default:
-            break;
-        }
-    }
-    catch (const Poco::Exception& e)
-    {
-        fmt::print("Log::outSys - {}\n", e.displayText());
-    }
-}
-
 void Log::_outSys(LogLevel level, std::string_view message)
 {
     Logger& logger = Logger::get("system");
@@ -196,7 +154,8 @@ void Log::_outSys(LogLevel level, std::string_view message)
             logger.notice(message.data());
             break;
         case LOG_LEVEL_INFO:
-            logger.information(fmt::format(message));
+            //logger.information(fmt::format(message));
+            logger.information(std::string(message));
             break;
         case LOG_LEVEL_DEBUG:
             logger.debug(message.data());

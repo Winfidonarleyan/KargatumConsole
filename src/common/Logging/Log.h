@@ -59,14 +59,7 @@ public:
         _outSys(level, fmt::format(fmt, std::forward<Args>(args)...));
     }
 
-    template<typename Format, typename... Args>
-    inline void outSys1(LogLevel const level, Format&& fmt, Args&&... args)
-    {
-        _outSys1(level, fmt::format(std::forward<Format>(fmt), std::forward<Args>(args)...));
-    }
-
 private:
-    void _outSys1(LogLevel level, std::string&& message);
     void _outSys(LogLevel level, std::string_view message);
 
     void Initialize();
@@ -85,25 +78,6 @@ private:
         catch (const std::exception& e) \
         { \
             sLog->outSys(LOG_LEVEL_ERROR, "Wrong format occurred ({}) at '{}:{}'", \
-                e.what(), __FILE__, __LINE__); \
-        } \
-    }
-
-#define FMT_LOG_MSG_BODY(level__, ...)                            \
-        do {                                                  \
-            if (sLog->ShouldLog(level__))                     \
-                FMT_LOG_EXCEPTION_FREE(level__, __VA_ARGS__); \
-        } while (0)
-
-#define FMT_LOG_EXCEPTION_FREE(level__, ...) \
-    { \
-        try \
-        { \
-            sLog->outSys1(level__, fmt::format(__VA_ARGS__)); \
-        } \
-        catch (const std::exception& e) \
-        { \
-            sLog->outSys1(LOG_LEVEL_ERROR, "Wrong format occurred ({}) at '{}:{}'", \
                 e.what(), __FILE__, __LINE__); \
         } \
     }

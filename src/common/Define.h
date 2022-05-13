@@ -6,7 +6,6 @@
 #define WH_DEFINE_H
 
 #include "CompilerDefs.h"
-
 #include <cinttypes>
 #include <climits>
 #include <cstddef>
@@ -57,9 +56,6 @@
 #define SI64LIT(N) INT64_C(N)
 
 #define SZFMTD "%" PRIuPTR
-
-#define STRING_VIEW_FMT "%.*s"
-#define STRING_VIEW_FMT_ARG(str) static_cast<int>((str).length()), (str).data()
 
 typedef int64_t int64;
 typedef int32_t int32;

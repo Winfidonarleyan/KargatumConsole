@@ -140,3 +140,50 @@ uint64 Warhead::File::GetFileSize(std::string const& filePath)
     Poco::File file(filePath);
     return file.getSize();
 }
+
+std::string Warhead::Impl::ByteArrayToHexStr(uint8 const* bytes, size_t arrayLen, bool reverse /* = false */)
+{
+    int32 init = 0;
+    int32 end = arrayLen;
+    int8 op = 1;
+
+    if (reverse)
+    {
+        init = arrayLen - 1;
+        end = -1;
+        op = -1;
+    }
+
+    std::ostringstream ss;
+    for (int32 i = init; i != end; i += op)
+    {
+        char buffer[4];
+        sprintf(buffer, "%02X", bytes[i]);
+        ss << buffer;
+    }
+
+    return ss.str();
+}
+
+void Warhead::Impl::HexStrToByteArray(std::string const& str, uint8* out, size_t outlen, bool reverse /*= false*/)
+{
+    //ASSERT(str.size() == (2 * outlen));
+
+    int32 init = 0;
+    int32 end = int32(str.length());
+    int8 op = 1;
+
+    if (reverse)
+    {
+        init = int32(str.length() - 2);
+        end = -2;
+        op = -1;
+    }
+
+    uint32 j = 0;
+    for (int32 i = init; i != end; i += 2 * op)
+    {
+        char buffer[3] = { str[i], str[i + 1], '\0' };
+        out[j++] = uint8(strtoul(buffer, nullptr, 16));
+    }
+}

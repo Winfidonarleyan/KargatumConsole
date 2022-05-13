@@ -48,4 +48,16 @@ namespace Warhead::File
     WH_COMMON_API uint64 GetFileSize(std::string const& filePath);
 }
 
+namespace Warhead::Impl
+{
+    std::string ByteArrayToHexStr(uint8 const* bytes, size_t length, bool reverse = false);
+    void HexStrToByteArray(std::string const& str, uint8* out, size_t outlen, bool reverse = false);
+}
+
+template<typename Container>
+std::string ByteArrayToHexStr(Container const& c, bool reverse = false)
+{
+    return Warhead::Impl::ByteArrayToHexStr(std::data(c), std::size(c), reverse);
+}
+
 #endif

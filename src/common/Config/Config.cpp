@@ -49,9 +49,7 @@ namespace
     template<typename Format, typename... Args>
     inline void PrintError(std::string_view filename, Format&& fmt, Args&& ... args)
     {
-        std::string message = Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...);
-
-        LOG_ERROR("{}", message.c_str());
+        FMT_LOG_ERROR(Warhead::StringFormat(fmt, std::forward<Args>(args)...));
     }
 
     void AddKey(std::string const& optionName, std::string const& optionKey, bool replace = true)
@@ -61,7 +59,7 @@ namespace
         {
             if (!replace)
             {
-                LOG_ERROR("server", "> Config: Option '{}' is exist! Option key - '{}'", optionName.c_str(), itr->second.c_str());
+                LOG_ERROR("> Config: Option '{}' is exist! Option key - '{}'", optionName.c_str(), itr->second.c_str());
                 return;
             }
 
@@ -198,7 +196,7 @@ T ConfigMgr::GetValueDefault(std::string const& name, T const& def, bool showLog
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Missing name {} in config, add \"{} = {}\"",
+            LOG_ERROR("> Config: Missing name {} in config, add \"{} = {}\"",
                 name.c_str(), name.c_str(), Warhead::ToString(def).c_str());
         }
 
@@ -210,7 +208,7 @@ T ConfigMgr::GetValueDefault(std::string const& name, T const& def, bool showLog
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Bad value defined for name '{}', going to use '{}' instead",
+            LOG_ERROR("> Config: Bad value defined for name '{}', going to use '{}' instead",
                 name.c_str(), Warhead::ToString(def).c_str());
         }
 
@@ -228,7 +226,7 @@ std::string ConfigMgr::GetValueDefault<std::string>(std::string const& name, std
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Missing name {} in config, add \"{} = {}\"",
+            LOG_ERROR("> Config: Missing name {} in config, add \"{} = {}\"",
                 name.c_str(), name.c_str(), def.c_str());
         }
 
@@ -254,7 +252,7 @@ WH_COMMON_API bool ConfigMgr::GetOption<bool>(std::string const& name, bool cons
     {
         if (showLogs)
         {
-            LOG_ERROR("server", "> Config: Bad value defined for name '{}', going to use '{}' instead",
+            LOG_ERROR("> Config: Bad value defined for name '{}', going to use '{}' instead",
                 name.c_str(), def ? "true" : "false");
         }
 

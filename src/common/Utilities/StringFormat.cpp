@@ -68,7 +68,18 @@ std::string Warhead::String::TrimRight(std::string& str)
 
 std::string Warhead::String::TrimRightInPlace(std::string& str)
 {
-    return Poco::trimRightInPlace(str);
+    //return Poco::trimRightInPlace(str);
+
+    int pos = int(str.size()) - 1;
+
+    while (pos >= 0 && std::isspace(str[pos]))
+    {
+        --pos;
+    }
+
+    str.resize(pos + 1);
+
+    return str;
 }
 
 std::string Warhead::String::Replace(std::string& str, std::string const& from, std::string const& to)
@@ -98,3 +109,9 @@ uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& 
 
 // Template Trim
 template WH_COMMON_API std::string Warhead::String::Trim<std::string>(const std::string& s, const std::locale& loc /*= std::locale()*/);
+
+//template<typename... Args>
+//void Warhead::Impl::Print::For<Args...>::PrintFormat(std::string_view fmt, Args&& ...args)
+//{
+//    fmt::print(fmt, std::forward<Args>(args)...);
+//}
