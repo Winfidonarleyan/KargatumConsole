@@ -21,7 +21,7 @@
 #   Cleanup.PathList
 #
 
-Cleanup.PathList = "F:\\Git\\WarheadBand\\src,F:\\Git\\azerothcore-wotlk\\src"
+Cleanup.PathList = "D:\\Git\\WarheadBand\\src,F:\\Git\\azerothcore-wotlk\\src,F:\Git\azerothcore-wotlk\data\sql\base"
 
 #
 #   Cleanup.CleanInclude.CheckFirst.Enable

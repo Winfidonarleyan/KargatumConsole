@@ -34,6 +34,9 @@ public:
     void CheckConfigOptions(std::string const& configType);
     void ReplaceConfigOptions();
     void ReplaceLoggingFormat();
+    void RenameFiles();
+    void CheckSha1DBFiles();
+    void CorrectDBFiles();
 
     void SendPathInfo();
     void LoadPathInfo();

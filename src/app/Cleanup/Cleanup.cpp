@@ -21,8 +21,11 @@
 #include "StringConvert.h"
 #include "Timer.h"
 #include "Util.h"
+#include "LaunchProcess.h"
+#include "CryptoHash.h"
 #include <Poco/Exception.h>
 #include <Poco/RegularExpression.h>
+#include <Poco/String.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -60,6 +63,11 @@ namespace
                 return false;
 
         return true;
+    }
+
+    void GitCommit()
+    {
+        Warhead::Process::Git::CommitAllFiles(_path.generic_string(), "\"chore(Core/Misc): code cleanup\"");
     }
 
     // Sort includes
@@ -187,7 +195,7 @@ namespace
                     firstInclude = itr;
             }
 
-            for (auto const itr : _includes)
+            for (auto const& itr : _includes)
                 unsortIncludes += itr + "\n";
 
             std::sort(_includes.begin(), _includes.end());
@@ -196,7 +204,7 @@ namespace
             if (!firstInclude.empty())
                 sortIncludes += firstInclude + "\n";
 
-            for (auto const itr : _includes)
+            for (auto const& itr : _includes)
             {
                 if (itr == firstInclude)
                     continue;
@@ -304,11 +312,11 @@ namespace
                 std::string unsortIncludes = "";
                 std::string sortIncludes = "";
 
-                for (auto const itr : _includes)
+                for (auto const& itr : _includes)
                     unsortIncludes += itr + "\n";
 
                 // Add without same includes
-                for (auto const itr : _includesUniqueue)
+                for (auto const& itr : _includesUniqueue)
                     sortIncludes += itr + "\n";
 
                 // If uncludes same - no need replace
@@ -702,6 +710,7 @@ namespace
                 IsExitstText(str, "PSendSysMessage") ||
                 IsExitstText(str, "PQuery") ||
                 IsExitstText(str, "PExecute") ||
+                IsExitstText(str, "PAppend") ||
                 IsExitstText(str, "SendNotification"))
             {
                 std::string text{ str };
@@ -729,7 +738,8 @@ namespace
                 text = Warhead::String::ReplaceInPlace(text, "%.5f", "{0:.5f}");
                 text = Warhead::String::ReplaceInPlace(text, "%3.1f", "{:3.1f}");
                 text = Warhead::String::ReplaceInPlace(text, "%%", "%");
-                text = Warhead::String::ReplaceInPlace(text, ".c_str()", "");
+                text = Warhead::String::ReplaceInPlace(text, "GetGUID().ToString().c_str()", "GetGUID()");
+                text = Warhead::String::ReplaceInPlace(text, ".c_str()", "");                
 
                 textLine.emplace(str, text);
             }
@@ -756,6 +766,46 @@ namespace
         }
 
         file.write(fileText.c_str(), fileText.size());
+        file.close();
+    }
+
+    void ReplaceSQLVariable(fs::path const& path)
+    {
+        std::string text = Warhead::File::GetFileText(path.generic_string());
+        std::string origText = text;
+
+        auto ReplaceVariables = [&](std::string const& varName)
+        {
+            auto pattern = Warhead::StringFormat("( {0}\\([0-9]\\))|( {0}\\([0-9][0-9]\\))|( {0}\\([0-9][0-9][0-9]\\))", varName);
+            auto upperVar = " " + Poco::toUpper(varName);
+
+            auto replaceCount = Warhead::String::PatternReplace(text, pattern, upperVar);
+            if (!replaceCount)
+                return;
+
+            ReplaceLines += replaceCount;            
+        };
+
+        ReplaceVariables("int");
+        ReplaceVariables("tinyint");
+        ReplaceVariables("smallint");
+        ReplaceVariables("bigint");
+
+        if (text == origText)
+            return;
+
+        filesReplaceCount++;
+
+        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
+
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
+            return;
+        }
+
+        file.write(text.c_str(), text.size());
         file.close();
     }
 }
@@ -793,6 +843,12 @@ void Cleanup::RemoveWhitespace()
         RemoveWhitespaceInFile(filePath);
 
     GetStats(ms);
+
+    if (filesReplaceCount)
+    {
+        LOG_INFO("> Commit this changes...");
+        GitCommit();
+    }
 }
 
 void Cleanup::ReplaceTabs()
@@ -1018,6 +1074,156 @@ void Cleanup::ReplaceLoggingFormat()
     GetStats(ms);
 }
 
+void Cleanup::RenameFiles()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".cpp", ".h" });
+
+    LOG_INFO("> Start replace? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start replace (Manger to Mgr) for '{}'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    for (auto const& filePath : _localeFileStorage)
+    {
+        auto fileName = filePath.filename().generic_string();
+        auto found = fileName.find("Manager");
+
+        if (found == std::string::npos)
+            continue;
+
+        auto& newFileName = fileName;
+        Warhead::String::ReplaceInPlace(newFileName, "Manager", "Mgr");
+
+        auto dirName = filePath.generic_string();
+        dirName.erase(dirName.end() - fileName.length(), dirName.end());
+
+        auto& oldPath = filePath;
+        auto newPath = dirName + newFileName;
+
+        if (oldPath == newPath)
+            continue; // ?
+
+        fs::rename(oldPath, newPath);
+    }
+
+    GetStats(ms);
+}
+
+void Cleanup::CheckSha1DBFiles()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".sql" });
+
+    LOG_INFO("> Start check? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start check SHA1 hash '{}'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    std::unordered_map<std::string, std::string> hashStore;
+    std::string fileText = "--\nDELETE FROM `updates` WHERE `name` IN (";
+
+    uint32 count = 1;
+
+    for (auto const& filePath : _localeFileStorage)
+    {
+        std::string const hash = ByteArrayToHexStr(Warhead::Crypto::SHA1::GetDigestOf(Warhead::File::GetFileText(filePath.generic_string())));
+        std::string const fileName = filePath.filename().generic_string();
+
+        //LOG_INFO("{}. '{}' - '{}'", count, fileName, hash);
+
+        hashStore.emplace(fileName, hash);
+        count++;
+    }
+
+    for (auto const& [fileName, hash] : hashStore)
+        fileText += "'" + fileName + "', ";
+
+    // Delete last ( ,)
+    if (!fileText.empty())
+        fileText.erase(fileText.end() - 2, fileText.end());
+
+    fileText += ");\nINSERT INTO `updates` (`name`, `hash`, `state`, `timestamp`, `speed`) VALUES\n";
+
+    for (auto const& [fileName, hash] : hashStore)
+        fileText += "('" + fileName + "', '" + hash + "', 'ARCHIVED', '2021-10-14 04:13:44', 1),\n";
+
+    // Delete last (,)
+    if (!fileText.empty())
+        fileText.erase(fileText.end() - 2, fileText.end());
+
+    fileText += ";";
+
+    LOG_INFO("\n{}", fileText);
+
+    std::ofstream file(_path.generic_string() + "/archive.sql");
+    if (!file.is_open())
+    {
+        LOG_FATAL("Failed open file \"{}\"!", _path.generic_string());
+        return;
+    }
+
+    file.write(fileText.c_str(), fileText.size());
+    file.close();
+
+    LOG_INFO("--");
+}
+
+void Cleanup::CorrectDBFiles()
+{
+    system("cls");
+
+    SendPathInfo();
+
+    GetListFiles({ ".sql" });
+
+    LOG_INFO("> Start replace? [yes (default) / no]");
+
+    std::string select;
+    std::getline(std::cin, select);
+
+    if (!select.empty() && select.substr(0, 1) != "y")
+        return;
+
+    uint32 ms = getMSTime();
+
+    LOG_INFO("> Cleanup: Start replace (SQL variables) for '{}'", _path.generic_string().c_str());
+
+    filesReplaceCount = 0;
+    ReplaceLines = 0;
+
+    for (auto const& filePath : _localeFileStorage)
+        ::ReplaceSQLVariable(filePath);
+
+    GetStats(ms);
+}
+
 // Path helpers
 bool Cleanup::SetPath(std::string const& path)
 {
@@ -1138,3 +1344,172 @@ void Cleanup::LoadPathInfo()
     LOG_INFO("> Loaded {} paths", static_cast<uint32>(_pathList.size()));
     LOG_INFO("--");
 }
+
+
+///
+
+//#include <unordered_map>
+//#include <unordered_set>
+//#include "Util.h"
+//#include <fstream>
+//#include <optional>
+
+//std::unordered_map<uint32, std::string> sqlColumns;
+//std::unordered_map<uint32, std::string> sqlData;
+//
+//std::optional<std::string> GetColumnNameFromID(uint32 columnNumber)
+//{
+//    for (auto const& [_index, _columnName] : sqlColumns)
+//        if (_index == columnNumber)
+//            return _columnName;
+//
+//    return {};
+//}
+//
+//bool IsColumnDisable(uint32 columnNumber)
+//{
+//    auto colName = GetColumnNameFromID(columnNumber);
+//    if (!colName)
+//        return false;
+//
+//    std::vector<std::string> disableColumns =
+//    {
+//        "`resistance1`", "`resistance2`", "`resistance3`", "`resistance4`", "`resistance5`", "`resistance6`",
+//        "`spell1`", "`spell2`", "`spell3`", "`spell4`", "`spell5`", "`spell6`", "`spell7`", "`spell8`",
+//        "`OfferRewardText`",
+//        "`mindmg`", "`maxdmg`", "`attackpower`", "`minrangedmg`", "`maxrangedmg`", "`rangedattackpower`"
+//    };
+//
+//    /*std::vector<std::string> disableColumns =
+//    {
+//        "`QuestInfoID`", "`QuestSortID`", "`Flags`", "`LogTitle`", "`LogDescription`", "`QuestDescription`", "`RequiredNpcOrGo1`", "`RequiredNpcOrGoCount1`"
+//    };*/
+//
+//    for (auto const& itr : disableColumns)
+//        if (*colName == itr)
+//            return true;
+//
+//    return false;
+//}
+//
+//std::optional<std::string> GetCorrectColumn(std::string const& columnName)
+//{
+//    std::unordered_map<std::string, std::string> incorrectColumns =
+//    {
+//        { "`Health_mod`", "`HealthModifier`"},
+//        { "`Mana_mod`", "`ManaModifier`"},
+//        { "`Armor_mod`", "`ArmorModifier`"},
+//        { "`dmg_multiplier`", "`DamageModifier`"},
+//    };
+//
+//    auto const& itr = incorrectColumns.find(columnName);
+//    if (itr != incorrectColumns.end())
+//        return itr->second;
+//
+//    return {};
+//}
+//
+//void Print()
+//{
+//    LOG_INFO("");
+//    LOG_INFO("");
+//
+//    auto const& fullText = Warhead::File::GetFileText("C:\\Users\\Dowla\\Desktop\\sql1.sql");
+//    std::string newText;
+//
+//    for (auto const& text : Warhead::Tokenize(fullText, ';', false))
+//    {
+//        //LOG_INFO("'{}'", text);
+//
+//        auto startColumns = text.find_first_of("(");
+//        auto endColumns = text.find_first_of(")");
+//        auto resultStartText = text.substr(0, startColumns + 1);
+//
+//        sqlColumns.clear();
+//        sqlData.clear();
+//
+//        if (startColumns != std::string::npos && endColumns != std::string::npos)
+//        {
+//            auto resultColumns = text.substr(startColumns + 1, endColumns - startColumns - 1);
+//            auto resultStartText = text.substr(0, startColumns + 1);
+//
+//            uint32 count = 0;
+//            for (auto const& itr : Warhead::Tokenize(resultColumns, ',', false))
+//            {
+//                std::string column = std::string(itr);
+//                column = Warhead::String::Trim(column);
+//                sqlColumns.emplace(count, column);
+//                count++;
+//            }
+//
+//            count = 0;
+//
+//            auto startData = text.find_last_of("(");
+//            auto endData = text.find_last_of(")");
+//
+//            if (startData != std::string::npos && endData != std::string::npos)
+//            {
+//                auto resultData = text.substr(startData + 1, endData - startData - 1);
+//
+//                for (auto const& itr : Warhead::Tokenize(resultData, ',', false))
+//                {
+//                    std::string column = std::string(itr);
+//                    column = Warhead::String::Trim(column);
+//                    sqlData.emplace(count, column);
+//                    count++;
+//                }
+//            }
+//        }
+//
+//        std::string sqlQueryText = std::string(resultStartText);
+//
+//        if (sqlColumns.empty() || sqlData.empty())
+//            continue;
+//
+//        for (auto const& [index, str] : sqlColumns)
+//        {
+//            if (IsColumnDisable(index))
+//                continue;
+//
+//            std::string colName = str;
+//
+//            if (auto correctColumn = GetCorrectColumn(str))
+//                colName = *correctColumn;
+//
+//            sqlQueryText.append(colName + ", ");
+//        }
+//
+//        sqlQueryText.erase(sqlQueryText.size() - 2, 2);
+//        sqlQueryText.append(") VALUES \n(");
+//
+//        for (auto const& [index, str] : sqlData)
+//        {
+//            if (IsColumnDisable(index))
+//                continue;
+//
+//            sqlQueryText.append(str + ", ");
+//        }
+//
+//        sqlQueryText.erase(sqlQueryText.size() - 2, 2);
+//        sqlQueryText.append(");\n");
+//
+//        newText.append(sqlQueryText);
+//    }
+//
+//    if (newText.empty())
+//    {
+//        LOG_FATAL("> newText empty!");
+//        return;
+//    }
+//
+//    auto filePath = "C:\\Users\\Dowla\\Desktop\\WHsql.sql";
+//    std::ofstream file(filePath);
+//    if (!file.is_open())
+//    {
+//        LOG_FATAL("Failed open file \"{}\"!", filePath);
+//        return;
+//    }
+//
+//    file.write(newText.c_str(), newText.size());
+//    file.close();
+//}
