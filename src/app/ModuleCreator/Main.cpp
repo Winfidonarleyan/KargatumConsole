@@ -20,11 +20,12 @@
 #include "Log.h"
 #include "ModuleCreator.h"
 #include "StringConvert.h"
+#include "Config.h"
 #include <iostream>
 
-void Load()
+namespace
 {
-    sLog->SetLogLevel(LOG_LEVEL_DEBUG);
+    constexpr auto PATH_TO_CONFIG = "F:\\Git\\KargatumConsole\\src\\app\\ModuleCreator\\ModuleCreator.conf";
 }
 
 void Selection();
@@ -44,7 +45,7 @@ void SelectCreateModule(uint32 option)
 
 void Selection()
 {
-    LOG_INFO("{}}", GitRevision::GetFullVersion());
+    LOG_INFO("{}", GitRevision::GetFullVersion());
     LOG_INFO("");
     LOG_INFO("# -- Select option:");
     LOG_INFO("1. Create module WarheadCore");
@@ -71,9 +72,15 @@ void Selection()
     }
 }
 
+void LoadConfig()
+{
+    sConfigMgr->Configure(PATH_TO_CONFIG);
+    sConfigMgr->LoadAppConfigs();
+}
+
 int main()
 {
-    Load();
+    LoadConfig();
 
     while (true)
     {

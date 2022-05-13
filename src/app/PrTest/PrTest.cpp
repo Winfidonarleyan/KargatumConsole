@@ -14,15 +14,3 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef _WARHEAD_CRYPTOHASH_H_
-#define _WARHEAD_CRYPTOHASH_H_
-
-#include "Common.h"
-
-namespace Warhead::Crypto
-{
-    WH_COMMON_API std::string GetMD5HashFromFile(std::string const& filePath);
-}
-
-#endif // _WARHEAD_CRYPTOHASH_H_

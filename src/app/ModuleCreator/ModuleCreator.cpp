@@ -8,6 +8,7 @@
 #include "Poco/Exception.h"
 #include "Poco/File.h"
 #include "StringFormat.h"
+#include "Config.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -27,7 +28,7 @@ namespace
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: {}", e.displayText().c_str());
+            LOG_FATAL("> Failed create directory: {}", e.displayText());
         }
     }
 
@@ -44,10 +45,16 @@ namespace
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: {}", e.displayText().c_str());
+            LOG_FATAL("> Failed create directories: {}", e.displayText());
         }
 
         return true;
+    }
+
+    template<typename... Args>
+    inline void AddLineInText(std::string& text, std::string_view fmt, Args&&... args)
+    {
+        text += Warhead::StringFormat(fmt, std::forward<Args>(args)...) + "\n";
     }
 }
 
@@ -61,38 +68,34 @@ bool ModuleCreator::CreateBaseArgs(std::string const& moduleName)
 {
     ::CheckBaseDir();
 
+    std::string pathToModules = sConfigMgr->GetOption<std::string>("MC.Path", "");
+
     scriptName = GetScriptsName(moduleName);
     correctModuleName = GetCorrectModuleName(moduleName);
-    pathToModule = "mods-created/" + correctModuleName;
+    correctSCModuleName = GetCorrectModuleName(moduleName, true);
+    pathToModule = pathToModules + correctModuleName;
     pathToModuleSrc = pathToModule + "/src/";
     defineText = GetUpperText(moduleName);
 
     LOG_DEBUG("");
     LOG_DEBUG("Create defines:");
-    LOG_DEBUG("> scriptName - {}", scriptName.c_str());
-    LOG_DEBUG("> correctModuleName - {}", correctModuleName.c_str());
-    LOG_DEBUG("> pathToModule - {}", pathToModule.c_str());
-    LOG_DEBUG("> pathToModuleSrc - {}", pathToModuleSrc.c_str());
-    LOG_DEBUG("> defineText - {}", defineText.c_str());
+    LOG_DEBUG("> scriptName - {}", scriptName);
+    LOG_DEBUG("> correctModuleName - {}", correctModuleName);
+    LOG_DEBUG("> pathToModule - {}", pathToModule);
+    LOG_DEBUG("> pathToModuleSrc - {}", pathToModuleSrc);
+    LOG_DEBUG("> defineText - {}", defineText);
     LOG_DEBUG("");
 
     if (!MakeDirForNewModule(pathToModule))
     {
-        LOG_FATAL("> Module '{}' is exist!", correctModuleName.c_str());
+        LOG_FATAL("> Module '{}' is exist!", correctModuleName);
         return false;
     }
 
     return true;
 }
 
-void ModuleCreator::AddLineInText(std::string& text, std::string&& message)
-{
-    text += message + "\n";
-
-    LOG_TRACE("> Added line ({})", message.c_str());
-}
-
-bool ModuleCreator::AddTextInFile(std::string const& path, std::string const& text)
+bool ModuleCreator::AddTextInFile(std::string_view path, std::string_view text)
 {
     // Path to file
     std::filesystem::path const temp(path);
@@ -100,7 +103,7 @@ bool ModuleCreator::AddTextInFile(std::string const& path, std::string const& te
     std::ofstream file(temp.generic_string());
     if (!file.is_open())
     {
-        LOG_FATAL("Failed to create file '{}'", temp.generic_string().c_str());
+        LOG_FATAL("Failed to create file '{}'", temp.generic_string());
         LOG_INFO("");
         return false;
     }
@@ -116,35 +119,35 @@ bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
     std::string cppFileName = GetScriptCPPFileName(moduleName);
     std::string hFileName = GetScriptHFileName(moduleName);
 
-    LOG_DEBUG("> Try create cpp file - {}", cppFileName.c_str());
+    LOG_DEBUG("> Try create cpp file - {}", cppFileName);
 
     std::string _text;
 
-    AddLineInText(_text, GetHeadText().c_str());
+    AddLineInText(_text, GetHeadText(_IsWarheadModule));
     AddLineInText(_text, "");
-    AddLineInText(_text, "#include \"{}\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"{}\"", hFileName);
     AddLineInText(_text, "#include \"Log.h\"");
     AddLineInText(_text, "#include \"{}.h\"", _IsWarheadModule ? "GameConfig" : "Config");
 
     if (!AddTextInFile(pathToModuleSrc + cppFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", cppFileName.c_str());
-    LOG_DEBUG("> Try create h file - {}", hFileName.c_str());
+    LOG_INFO("> Created - {}", cppFileName);
+    LOG_DEBUG("> Try create .h file - {}", hFileName);
 
     _text.clear();
 
-    AddLineInText(_text, GetHeadText().c_str());
+    AddLineInText(_text, GetHeadText(_IsWarheadModule));
     AddLineInText(_text, "");
-    AddLineInText(_text, "#ifndef _{}_H_", defineText.c_str());
-    AddLineInText(_text, "#define _{}_H_", defineText.c_str());
+    AddLineInText(_text, "#ifndef _{}_H_", defineText);
+    AddLineInText(_text, "#define _{}_H_", defineText);
     AddLineInText(_text, "");
-    AddLineInText(_text, "#endif /* _{}_H_ */", defineText.c_str());
+    AddLineInText(_text, "#endif /* _{}_H_ */", defineText);
 
     if (!AddTextInFile(pathToModuleSrc + hFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", hFileName.c_str());
+    LOG_INFO("> Created - {}", hFileName);
 
     return true;
 }
@@ -153,30 +156,25 @@ bool ModuleCreator::CreateScriptLoader(std::string const& moduleName)
 {
     std::string fileName = GetScriptLoaderFileName(moduleName);
 
-    LOG_DEBUG("> Try create script loader - {}", fileName.c_str());
+    LOG_DEBUG("> Try create script loader - {}", fileName);
 
     std::string _text;
 
-    AddLineInText(_text, GetHeadText().c_str());
-    AddLineInText(_text, "");
-    AddLineInText(_text, "#ifndef _{}_LOADER_H_", defineText.c_str());
-    AddLineInText(_text, "#define _{}_LOADER_H_", defineText.c_str());
+    AddLineInText(_text, GetHeadText(_IsWarheadModule));
     AddLineInText(_text, "");
     AddLineInText(_text, "// From SC");
-    AddLineInText(_text, "void AddSC_{}();", scriptName.c_str());
+    AddLineInText(_text, "void AddSC_{}();", scriptName);
     AddLineInText(_text, "");
     AddLineInText(_text, "// Add all");
-    AddLineInText(_text, "void Add{}Scripts()", scriptName.c_str());
-    AddLineInText(_text, "{");
-    AddLineInText(_text, "   AddSC_{}();", scriptName.c_str());
-    AddLineInText(_text, "}");
-    AddLineInText(_text, "");
-    AddLineInText(_text, "#endif /* _{}_LOADER_H_ */", defineText.c_str());
+    AddLineInText(_text, "void Add{}Scripts()", correctSCModuleName);
+    AddLineInText(_text, "{}", "{");
+    AddLineInText(_text, "    AddSC_{}();", scriptName);
+    AddLineInText(_text, "{}", "}");
 
     if (!AddTextInFile(pathToModuleSrc + fileName, _text))
         return false;
 
-    LOG_INFO("> Created script loader ({})", fileName.c_str());
+    LOG_INFO("> Created script loader ({})", fileName);
 
     return true;
 }
@@ -186,13 +184,13 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     std::string SCFileName = GetSCCPPFileName(moduleName);
     std::string hFileName = GetScriptHFileName(moduleName);
 
-    LOG_DEBUG("> Try create cpp file - {}", SCFileName.c_str());
+    LOG_DEBUG("> Try create cpp file - {}", SCFileName);
 
     std::string _text;
 
-    AddLineInText(_text, GetHeadText().c_str());
+    AddLineInText(_text, GetHeadText(_IsWarheadModule));
     AddLineInText(_text, "");
-    AddLineInText(_text, "#include \"{}\"", hFileName.c_str());
+    AddLineInText(_text, "#include \"{}\"", hFileName);
     AddLineInText(_text, "#include \"Log.h\"");
     AddLineInText(_text, "#include \"ScriptMgr.h\"");
     AddLineInText(_text, "#include \"{}.h\"", _IsWarheadModule ? "GameConfig" : "Config");
@@ -200,27 +198,27 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     AddLineInText(_text, "#include \"Player.h\"");
     AddLineInText(_text, "#include \"ScriptedGossip.h\"");
     AddLineInText(_text, "");
-    AddLineInText(_text, "class {}_World : public WorldScript", scriptName.c_str());
-    AddLineInText(_text, "{");
+    AddLineInText(_text, "class {}_World : public WorldScript", scriptName);
+    AddLineInText(_text, "{}", "{");
     AddLineInText(_text, "public:");
-    AddLineInText(_text, "    {}_World() : WorldScript(\"{}_World\") { }", scriptName.c_str(), scriptName.c_str());
+    AddLineInText(_text, "    {}_World() : WorldScript(\"{}_World\") {}", scriptName, scriptName, "{ }");
     AddLineInText(_text, "");
     AddLineInText(_text, "    void OnAfterConfigLoad(bool /*reload*/) override");
-    AddLineInText(_text, "    {");
+    AddLineInText(_text, "    {}", "{");
     AddLineInText(_text, "        // Add conigs options configiration");
-    AddLineInText(_text, "    }");
-    AddLineInText(_text, "};");
+    AddLineInText(_text, "    {}", "}");
+    AddLineInText(_text, "{};", "}");
     AddLineInText(_text, "");
     AddLineInText(_text, "// Group all custom scripts");
-    AddLineInText(_text, "void AddSC_{}()", scriptName.c_str());
-    AddLineInText(_text, "{");
-    AddLineInText(_text, "    new {}_World();", scriptName.c_str());
-    AddLineInText(_text, "}");
+    AddLineInText(_text, "void AddSC_{}()", scriptName);
+    AddLineInText(_text, "{}", "{");
+    AddLineInText(_text, "    new {}_World();", scriptName);
+    AddLineInText(_text, "{}", "}");
 
     if (!AddTextInFile(pathToModuleSrc + SCFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", SCFileName.c_str());
+    LOG_INFO("> Created - {}", SCFileName);
 
     return true;
 }
@@ -229,16 +227,15 @@ bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
 {
     std::string configFileName = GetConfigFileName(moduleName);
 
-    LOG_DEBUG("> Try create config file - {}", configFileName.c_str());
+    LOG_DEBUG("> Try create config file - {}", configFileName);
 
     std::string _text;
 
-    AddLineInText(_text, GetHeadText(true).c_str());
+    AddLineInText(_text, GetHeadText(_IsWarheadModule, true));
     AddLineInText(_text, "");
     AddLineInText(_text, "########################################");
-    AddLineInText(_text, "# {} module configuration", GetScriptsName(moduleName).c_str());
+    AddLineInText(_text, "# {} module configuration", GetScriptsName(moduleName));
     AddLineInText(_text, "########################################");
-    AddLineInText(_text, "[worldserver]");
     AddLineInText(_text, "");
     AddLineInText(_text, "#");
     AddLineInText(_text, "#");
@@ -247,7 +244,7 @@ bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
     if (!AddTextInFile(pathToModule + "/conf/" + configFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", configFileName.c_str());
+    LOG_INFO("> Created - {}", configFileName);
 
     return true;
 }
@@ -258,23 +255,19 @@ bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
 
     std::string _text;
 
-    AddLineInText(_text, GetHeadText(true).c_str());
+    AddLineInText(_text, GetHeadText(_IsWarheadModule, true));
     AddLineInText(_text, "");
     AddLineInText(_text, "# Add source files");
 
     if (_IsWarheadModule)
-        AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"{}\")", scriptName.c_str());
+        AddLineInText(_text, "WH_ADD_MODULES_SOURCE(\"{}\")", scriptName);
     else
     {
-        AddLineInText(_text, "AC_ADD_SCRIPT(\"${CMAKE_CURRENT_LIST_DIR}/src/{}\")", GetSCCPPFileName(moduleName).c_str());
+        AddLineInText(_text, "AC_ADD_SCRIPT(\"${CMAKE_CURRENT_LIST_DIR}/src/{}\")", GetSCCPPFileName(moduleName));
         AddLineInText(_text, "");
         AddLineInText(_text, "# Add scripts to script loader");
-        AddLineInText(_text, "AC_ADD_SCRIPT_LOADER(\"{}\" \"${CMAKE_CURRENT_LIST_DIR}/src/{}\")", scriptName.c_str(), GetScriptLoaderFileName(moduleName).c_str());
+        AddLineInText(_text, "AC_ADD_SCRIPT_LOADER(\"{}\" \"${CMAKE_CURRENT_LIST_DIR}/src/{}\")", scriptName, GetScriptLoaderFileName(moduleName));
     }
-
-    AddLineInText(_text, "");
-    AddLineInText(_text, "# Add config file");
-    AddLineInText(_text, "{}_ADD_CONFIG_FILE(\"${CMAKE_CURRENT_LIST_DIR}/conf/{}\")", _IsWarheadModule ? "WH" : "AC", GetConfigFileName(moduleName).c_str());
 
     if (!AddTextInFile(pathToModule + "/" + "CMakeLists.txt", _text))
         return false;
@@ -472,7 +465,7 @@ bool ModuleCreator::CreateBaseFiles()
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: {}", e.displayText().c_str());
+            LOG_FATAL("> Failed create directory: {}", e.displayText());
         }
     };
 
@@ -491,8 +484,8 @@ void ModuleCreator::CreateModule(std::string const& moduleName, bool isWarheadMo
     if (!CreateBaseArgs(moduleName))
         return;
 
-    LOG_INFO("Creating {}Core module - {}", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName.c_str());
-    LOG_INFO("> Move base module files to new module - {}", correctModuleName.c_str());
+    LOG_INFO("Creating {}Core module - {}", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName);
+    LOG_INFO("> Move base module files to new module - {}", correctModuleName);
 
     // #1. Create base files
     CreateBaseFiles();
@@ -509,34 +502,71 @@ void ModuleCreator::CreateModule(std::string const& moduleName, bool isWarheadMo
     // #5. Create config file
     CreateConfigFile(moduleName);
 
-    // #6. Create CMakeLists.txt
-    CreateCmakeFile(moduleName);
+    // #6. Create CMakeLists.txt (deprecated)
+    //CreateCmakeFile(moduleName);
 }
 
 // Text transform
-std::string ModuleCreator::GetHeadText(bool isSpecal /*= false*/)
+std::string ModuleCreator::GetHeadText(bool isWarhead /*= true*/, bool isSpecal /*= false*/)
 {
     std::string text;
 
+
+
     if (!isSpecal)
     {
-
         text += "/*\n";
-        text += "* This file is part of the WarheadCore Project. See AUTHORS file for Copyright information\n";
-        text += "*\n";
-        text += "* This program is free software; you can redistribute it and/or modify it\n";
-        text += "* under the terms of the GNU General Public License as published by the\n";
-        text += "* Free Software Foundation; either version 2 of the License, or (at your\n";
-        text += "* option) any later version.\n";
-        text += "*\n";
-        text += "* This program is distributed in the hope that it will be useful, but WITHOUT\n";
-        text += "* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n";
-        text += "* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for\n";
-        text += "* more details.\n";
-        text += "*\n";
-        text += "* You should have received a copy of the GNU General Public License along\n";
-        text += "* with this program. If not, see <http://www.gnu.org/licenses/>.\n";
-        text += "*/";
+        text += " * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information\n";
+        text += " *\n";
+        text += " * This program is free software; you can redistribute it and/or modify it\n";
+        text += " * under the terms of the GNU General Public License as published by the\n";
+        text += " * Free Software Foundation; either version 2 of the License, or (at your\n";
+        text += " * option) any later version.\n";
+        text += " *\n";
+        text += " * This program is distributed in the hope that it will be useful, but WITHOUT\n";
+        text += " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n";
+        text += " * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for\n";
+        text += " * more details.\n";
+        text += " *\n";
+        text += " * You should have received a copy of the GNU General Public License along\n";
+        text += " * with this program. If not, see <http://www.gnu.org/licenses/>.\n";
+        text += " */";
+    }
+    else if (!isWarhead && isSpecal)
+    {
+        text += "#\n";
+        text += "# This file is part of the AzerothCore Project. See AUTHORS file for Copyright information\n";
+        text += "#\n";
+        text += "# This file is free software; as a special exception the author gives\n";
+        text += "# unlimited permission to copy and/or distribute it, with or without\n";
+        text += "# modifications, as long as this notice is preserved.\n";
+        text += "#\n";
+        text += "# This program is distributed in the hope that it will be useful, but\n";
+        text += "# WITHOUT ANY WARRANTY, to the extent permitted by law; without even the\n";
+        text += "# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
+        text += "#\n";
+        text += "# User has manually chosen to ignore the git-tests, so throw them a warning.\n";
+        text += "# This is done EACH compile so they can be alerted about the consequences.\n";
+        text += "#";
+    }
+    else if (isWarhead && !isSpecal)
+    {
+        text += "/*\n";
+        text += " * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information\n";
+        text += " *\n";
+        text += " * This program is free software; you can redistribute it and/or modify it\n";
+        text += " * under the terms of the GNU General Public License as published by the\n";
+        text += " * Free Software Foundation; either version 2 of the License, or (at your\n";
+        text += " * option) any later version.\n";
+        text += " *\n";
+        text += " * This program is distributed in the hope that it will be useful, but WITHOUT\n";
+        text += " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n";
+        text += " * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for\n";
+        text += " * more details.\n";
+        text += " *\n";
+        text += " * You should have received a copy of the GNU General Public License along\n";
+        text += " * with this program. If not, see <http://www.gnu.org/licenses/>.\n";
+        text += " */";
     }
     else
     {
@@ -576,7 +606,7 @@ std::string ModuleCreator::GetScriptLoaderFileName(std::string str)
 {
     std::string text;
     std::transform(str.begin(), str.end(), std::back_inserter(text), tolower);
-    return text +  "_loader." + (_IsWarheadModule ? "cpp" : "h");
+    return text + "_loader.cpp";
 }
 
 std::string ModuleCreator::GetScriptCPPFileName(std::string str)
@@ -600,13 +630,15 @@ std::string ModuleCreator::GetScriptHFileName(std::string str)
     return str + ".h";
 }
 
-std::string ModuleCreator::GetCorrectModuleName(std::string str)
+std::string ModuleCreator::GetCorrectModuleName(std::string str, bool sc /*= false*/)
 {
     std::string text;
     std::transform(str.begin(), str.end(), std::back_inserter(text), tolower);
-    std::replace(text.begin(), text.end(), '_', '-');
 
-    return "mod-" + text;
+    if (!sc)
+        std::replace(text.begin(), text.end(), '_', '-');
+
+    return sc ? "mod_" + text : "mod-" + text;
 }
 
 std::string ModuleCreator::GetUpperText(std::string str)

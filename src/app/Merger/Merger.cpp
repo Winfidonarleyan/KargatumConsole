@@ -17,6 +17,7 @@
 
 #include "Merger.h"
 #include "Log.h"
+#include "Config.h"
 #include "StringConvert.h"
 #include "Timer.h"
 #include "Util.h"
@@ -27,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <unordered_map>
 
 namespace
 {
@@ -38,6 +40,11 @@ namespace
     fs::path _path;
     std::vector<fs::path> _localeFileStorage;
     std::vector<std::string> _supportExtensions;
+
+    std::unordered_map<std::string/*from*/, std::string/*to*/> _replaceStore;
+
+    // Config
+    std::unordered_map<uint8, std::string> _pathList;
 
     bool IsNormalExtension(fs::path const& path)
     {
@@ -64,18 +71,25 @@ namespace
         }
     }
 
-    void Correct(fs::path const& path, std::string const& replaceFrom, std::string const& replaceTo)
+    void CorrectText(fs::path const& path)
     {
         std::string text = Warhead::File::GetFileText(path.generic_string());
+        std::string origText{ text };
+        ReplaceLines = 0;
 
-        uint8 count = Warhead::String::PatternReplace(text, replaceFrom, replaceTo);
-        if (!count)
+        for (auto const& [_from, _to] : _replaceStore)
+        {
+            text = Warhead::String::Replace(text, _from, _to);
+            if (text == origText)
+                continue;
+
+            ReplaceLines++;
+        }
+
+        if (origText == text)
             return;
 
-        filesReplaceCount++;
-        ReplaceLines += count;
-
-        LOG_INFO("{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), count);
+        LOG_INFO("{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), ReplaceLines);
 
         std::ofstream file(path);
         if (!file.is_open())
@@ -83,6 +97,8 @@ namespace
             LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
+
+        filesReplaceCount++;
 
         file.write(text.c_str(), text.size());
         file.close();
@@ -98,7 +114,7 @@ namespace
         if (ReplaceLines)
             LOG_INFO("# -- Replace lines ({})", ReplaceLines);
 
-        LOG_INFO("# -- Used time '{}'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
+        //LOG_INFO("# -- Used time '{}'", Warhead::Time::ToTimeString(GetMSTimeDiffToNow(startTimeMS)));
         LOG_INFO("");
     }
 
@@ -125,20 +141,30 @@ Merger* Merger::instance()
 
 void Merger::Init()
 {
+    LoadPathInfo();
     SendPathInfo();
 
     GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
 
-    auto Replace = [](std::string const& replaceFrom, std::string const& replaceTo)
+    auto AddReplaceStore = [&](std::string_view from, std::string_view to)
+    {
+        auto const& itr = _replaceStore.find(std::string(from));
+        if (itr != _replaceStore.end())
+            return;
+
+        _replaceStore.emplace(from, to);
+    };
+
+    auto Replace = [&]()
     {
         LOG_INFO("");
-        LOG_INFO("> Merger: Start replace from '{}' to '{}'", replaceFrom.c_str(), replaceTo.c_str());
+        LOG_INFO("> Merger: Start replace...");
 
         filesReplaceCount = 0;
         ReplaceLines = 0;
 
         for (auto const& filePath : _localeFileStorage)
-            Correct(filePath, replaceFrom, replaceTo);
+            CorrectText(filePath);
 
         LOG_INFO("> Merger: Replace files ({})", filesReplaceCount);
         LOG_INFO("> Merger: Replace lines ({})", ReplaceLines);
@@ -156,12 +182,58 @@ void Merger::Init()
 
     LOG_INFO("> Merger: Start correct for '{}'", _path.generic_string().c_str());
 
-    Replace("TrinityCore Project", "WarheadCore Project");
-    Replace("TC_LOG", "LOG");
-    Replace("TC_", "WH_");
-    Replace("Trinity::", "Warhead::");
-    Replace("namespace Trinity", "namespace Warhead");
-    Replace("TrinityString", "WarheadString");
+    // License
+    AddReplaceStore("AzerothCore", "WarheadCore");
+
+    //// Logging
+    //AddReplaceStore("FMT_LOG", "LOG");
+
+    //// Macros
+    //Replace("AC_COMMON_API", "WH_COMMON_API");
+    //Replace("AC_GAME_API", "WH_GAME_API");
+
+    //// Namespace
+    AddReplaceStore("Acore::", "Warhead::");
+    AddReplaceStore("namespace Acore", "namespace Warhead");
+
+    //// Strings
+    AddReplaceStore("AcoreString", "WarheadString");
+
+    // DB PS
+    AddReplaceStore("setNull(",         "SetData(");
+    AddReplaceStore("setBool(",         "SetData(");
+    AddReplaceStore("setUInt8(",        "SetData(");
+    AddReplaceStore("setInt8(",         "SetData(");
+    AddReplaceStore("setUInt16(",       "SetData(");
+    AddReplaceStore("setInt16(",        "SetData(");
+    AddReplaceStore("setUInt32(",       "SetData(");
+    AddReplaceStore("setInt32(",        "SetData(");
+    AddReplaceStore("setUInt64(",       "SetData(");
+    AddReplaceStore("setInt64(",        "SetData(");
+    AddReplaceStore("setFloat(",        "SetData(");
+    AddReplaceStore("setDouble(",       "SetData(");
+    AddReplaceStore("setString(",       "SetData(");
+    AddReplaceStore("setStringView(",   "SetData(");
+    AddReplaceStore("setBinary(",       "SetData(");
+
+    // DB Fields
+    AddReplaceStore("GetBool(",         "Get<bool>(");
+    AddReplaceStore("GetUInt8(",        "Get<uint8>(");
+    AddReplaceStore("GetInt8(",         "Get<int8>(");
+    AddReplaceStore("GetUInt16(",       "Get<uint16>(");
+    AddReplaceStore("GetInt16(",        "Get<int16>(");
+    AddReplaceStore("GetUInt32(",       "Get<uint32>(");
+    AddReplaceStore("GetInt32(",        "Get<int32>(");
+    AddReplaceStore("GetUInt64(",       "Get<uint64>(");
+    AddReplaceStore("GetInt64(",        "Get<int64>(");
+    AddReplaceStore("GetFloat(",        "Get<float>(");
+    AddReplaceStore("GetDouble(",       "Get<double>(");
+    AddReplaceStore("GetString(",       "Get<std::string>(");
+    AddReplaceStore("GetStringView(",   "Get<std::string_view>(");
+    AddReplaceStore("GetBinary(",       "Get<Binary>(");
+
+    // Start work
+    Replace();
 
     GetStats(ms);
 }
@@ -172,11 +244,11 @@ bool Merger::SetPath(std::string const& path)
 
     if (!fs::is_directory(path))
     {
-        LOG_FATAL("> Merger: Path '{}' in not directory!", path.c_str());
+        LOG_FATAL("> Cleanup: Path '{}' in not directory!", path.c_str());
         return false;
     }
 
-    LOG_INFO("> Merger: Added path '{}'", path.c_str());
+    LOG_INFO("> Cleanup: Added path '{}'", path.c_str());
 
     _path = fs::path(path);
 
@@ -211,35 +283,33 @@ void Merger::SendPathInfo()
 
     auto GetPathFromConsole = [&](uint32 selectOption)
     {
-        std::string whitespacePath;
+        std::string selectPath;
 
-        switch (selectOption)
+        if (selectOption == 8)
         {
-        case 1:
-            whitespacePath = "F:\\Git\\Warhead\\src";
-            break;
-        case 2:
-            whitespacePath = "F:\\Git\\Warhead\\cmake";
-            break;
-        case 8:
             LOG_INFO("-- Enter path:");
-            std::getline(std::cin, whitespacePath);
-            break;
-        default:
-            SendPathInfo();
-            break;
+            std::getline(std::cin, selectPath);
+        }
+        else
+        {
+            auto const& itr = _pathList.find(selectOption);
+            if (itr != _pathList.end())
+                selectPath = itr->second;
         }
 
-        return whitespacePath;
+        return selectPath;
     };
 
     std::string pathInfo = GetPath();
     if (pathInfo.empty())
     {
         LOG_FATAL(">> Path is empty! Please enter path.");
-        LOG_INFO("# -- Warhead");
-        LOG_INFO("1. ./src");
-        LOG_INFO("2. ./cmake");
+
+        for (auto const& [index, _path] : _pathList)
+        {
+            LOG_INFO("{}. '{}'", index, _path.c_str());
+        }
+
         LOG_INFO("# --");
         LOG_INFO("8. Enter path manually");
         LOG_INFO("> Select:");
@@ -257,4 +327,33 @@ void Merger::SendPathInfo()
 
     if (!IsCorrectPath())
         SendPathInfo();
+}
+
+void Merger::LoadPathInfo()
+{
+    sConfigMgr->Configure("F:\\Git\\KargatumConsole\\src\\app\\Cleanup\\cleanup.conf");
+
+    if (!sConfigMgr->LoadAppConfigs())
+    {
+        LOG_FATAL("> Config not loaded!");
+        return;
+    }
+
+    LOG_INFO(">> Loading path list...");
+
+    _pathList.clear();
+
+    std::string pathStr = sConfigMgr->GetOption<std::string>("Cleanup.PathList", "");
+    std::vector<std::string_view> tokens = Warhead::Tokenize(pathStr, ',', false);
+    uint8 index = 1;
+
+    for (auto const& itr : tokens)
+    {
+        LOG_DEBUG("> Added path '{}'. Index {}", std::string(itr).c_str(), index);
+        _pathList.emplace(index, itr);
+        index++;
+    }
+
+    LOG_INFO("> Loaded {} paths", _pathList.size());
+    LOG_INFO("--");
 }

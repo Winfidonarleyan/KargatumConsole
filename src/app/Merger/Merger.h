@@ -28,6 +28,8 @@ public:
     void Init();
 
     void SendPathInfo();
+    void LoadPathInfo();
+
     bool SetPath(std::string const& path);
     void CleanPath();
     std::string const GetPath();

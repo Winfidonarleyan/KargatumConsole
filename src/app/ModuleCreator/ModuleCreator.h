@@ -29,23 +29,17 @@ private:
     std::string GetScriptCPPFileName(std::string str);
     std::string GetSCCPPFileName(std::string str);
     std::string GetScriptHFileName(std::string str);
-    std::string GetCorrectModuleName(std::string str);
+    std::string GetCorrectModuleName(std::string str, bool sc = false);
     std::string GetUpperText(std::string str);
-    std::string GetHeadText(bool isSpecal = false);
-
-    template<typename Format, typename... Args>
-    inline void AddLineInText(std::string& text, Format&& fmt, Args&& ... args)
-    {
-        AddLineInText(text, Warhead::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
-    }
+    std::string GetHeadText(bool isWarhead = true, bool isSpecal = false);
 
     bool CreateBaseArgs(std::string const& moduleName);
-    void AddLineInText(std::string& text, std::string&& message);
-    bool AddTextInFile(std::string const& path, std::string const& text);
+    bool AddTextInFile(std::string_view path, std::string_view text);
 
     // Global variables
     std::string scriptName;
     std::string correctModuleName;
+    std::string correctSCModuleName;
     std::string pathToModule;
     std::string pathToModuleSrc;
     std::string defineText;
