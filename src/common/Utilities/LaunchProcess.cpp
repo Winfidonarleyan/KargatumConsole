@@ -33,10 +33,10 @@ namespace
     constexpr auto GIT_COMMIT = "git commit -m";
     constexpr auto GIT_COMMIT_MESSAGE = "\"feat(Misc): correct\"";
 
-    bool IsExitstText(std::string_view text, std::string_view textFind)
+    inline constexpr bool IsExitstText(std::string_view text, std::string_view textFind)
     {
         return text.find(textFind) != std::string::npos;
-    };
+    }
 }
 
 void Warhead::Process::SendCommand(std::string_view path, std::string_view command)
@@ -56,11 +56,14 @@ void Warhead::Process::SendCommand(std::string_view path, std::string_view comma
     LOG_INFO("\n{}", text);
 }
 
-void Warhead::Process::Git::CommitAllFiles(std::string_view path, std::string_view commitMessage)
+void Warhead::Process::Git::CommitAllFiles(std::string_view path, std::string_view commitMessage, std::string_view commitDescription)
 {
     std::vector<std::string> args = { { "-command" } };
 
-    std::string command = fmt::format("{}; {} {}", GIT_ADD_FILES, GIT_COMMIT, commitMessage);
+    std::string command = fmt::format("{}; {} \"{}\" ", GIT_ADD_FILES, GIT_COMMIT, commitMessage);
+
+    if (!commitDescription.empty())
+        command.append(fmt::format("-m \"{}\"", commitDescription));
 
     // Add commands
     args.emplace_back(StringFormat("cd {}; {}", path, command));
@@ -205,4 +208,24 @@ void Warhead::Process::Git::Checkout(std::string_view path, std::string_view bra
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Process::launch(POWER_SHELL_EXE, args, 0, 0, 0);
+}
+
+bool Warhead::Process::Git::IsRepository(std::string_view path)
+{
+    std::vector<std::string> args = { { "-command" } };
+
+    // Add commands
+    args.emplace_back(StringFormat("cd {}; git status", path));
+
+    Poco::Pipe outPipe;
+    Poco::Process::launch(POWER_SHELL_EXE, args, nullptr, &outPipe, nullptr);
+
+    std::string textOut;
+    Poco::PipeInputStream istr1(outPipe);
+    Poco::StreamCopier::copyToString(istr1, textOut);
+
+    if (textOut.empty())
+        return false;
+
+    return !IsExitstText(textOut, "fatal: not a git repository (or any of the parent directories): .git");
 }
