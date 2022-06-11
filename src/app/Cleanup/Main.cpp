@@ -31,21 +31,7 @@ void SelectCleanup()
     LOG_INFO("# 2. Replace tabs");
     LOG_INFO("# 3. Sort includes");
     LOG_INFO("# 4. Same includes");
-    LOG_INFO("# 5. Clean ENABLE_EXTRA_LOGS");
-    LOG_INFO("# 6. Check using includes");
-    LOG_INFO("# 7. Replace logging format");
-    LOG_INFO("# 8. Rename files (Manager - Mgr)");
-    LOG_INFO("# 9. Check SHA1");
-    LOG_INFO("# 10. Correct SQL variables");
-    LOG_INFO("# --");
-    /*
-    LOG_INFO("# 10. Check bool configs");
-    LOG_INFO("# 11. Check uint32 configs");
-    LOG_INFO("# 12. Check int32 configs");
-    LOG_INFO("# 13. Check std::string configs");
-    LOG_INFO("# 14. Check float configs");
-    LOG_INFO("# 15. Replace config options API");
-    */
+    LOG_INFO("# 5. Check using includes");
     LOG_INFO("# --");
     LOG_INFO("# 99. Exit");
     LOG_INFO("# --");
@@ -70,41 +56,7 @@ void SelectCleanup()
             sClean->CheckSameIncludes();
             break;
         case 5:
-            sClean->CheckExtraLogs();
-            break;
-        case 6:
             sClean->CheckUsingIncludesCount();
-            break;
-        case 7:
-            sClean->ReplaceLoggingFormat();
-            break;
-        case 8:
-            sClean->RenameFiles();
-            break;
-        case 9:
-            sClean->CheckSha1DBFiles();
-            break;
-        case 10:
-            sClean->CorrectDBFiles();
-            break;
-        // Configs
-        /*case 10:
-            sClean->CheckConfigOptions("bool");
-            break;
-        case 11:
-            sClean->CheckConfigOptions("uint32");
-            break;
-        case 12:
-            sClean->CheckConfigOptions("int32");
-            break;
-        case 13:
-            sClean->CheckConfigOptions("std::string");
-            break;
-        case 14:
-            sClean->CheckConfigOptions("float");
-            break;*/
-        case 15:
-            sClean->ReplaceConfigOptions();
             break;
         // Exit console
         case 99:

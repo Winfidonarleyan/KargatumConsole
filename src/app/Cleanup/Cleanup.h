@@ -19,6 +19,13 @@
 #define _CLEANUP_H_
 
 #include "Common.h"
+#include "Duration.h"
+#include <filesystem>
+#include <unordered_map>
+#include <vector>
+
+using ReplaceFiles = std::pair<std::string, std::size_t>;
+using ReplaceFilesStore = std::vector<ReplaceFiles>;
 
 class WH_COMMON_API Cleanup
 {
@@ -29,23 +36,35 @@ public:
     void ReplaceTabs();
     void SortIncludes();
     void CheckSameIncludes();
-    void CheckExtraLogs();
     void CheckUsingIncludesCount();
-    void CheckConfigOptions(std::string const& configType);
-    void ReplaceConfigOptions();
-    void ReplaceLoggingFormat();
-    void RenameFiles();
-    void CheckSha1DBFiles();
-    void CorrectDBFiles();
-
-    void SendPathInfo();
+    
     void LoadPathInfo();
 
+private:
     bool SetPath(std::string const& path);
     void CleanPath();
     std::string const GetPath();
     bool IsCorrectPath();
-    uint32 GetFoundFiles();
+    void SendPathInfo(bool manually = false);
+
+    void FillFileList(std::filesystem::path const& path, std::initializer_list<std::string> extensionsList);
+    bool IsCoreDir(std::filesystem::path const& path);
+
+    // General functions
+    bool RemoveWhitespaceInFile(std::filesystem::path const& path, ReplaceFilesStore& stats);
+    void ReplaceTabstoWhitespaceInFile(std::filesystem::path const& path, ReplaceFilesStore& stats);
+    void SortIncludesInFile(std::filesystem::path const& path, ReplaceFilesStore& stats);
+    void CheckSameIncludes(std::filesystem::path const& path, ReplaceFilesStore& stats);
+    void CheckIncludesInFile();
+
+    // Config
+    std::unordered_map<std::size_t, std::string> _pathList;
+
+    uint32 _filesReplaceCount = 0;
+    uint32 _replaceLines = 0;
+    std::filesystem::path _path;
+    std::vector<std::filesystem::path> _localeFileStorage;
+    std::vector<std::string> _supportExtensions;
 };
 
 #define sClean Cleanup::instance()

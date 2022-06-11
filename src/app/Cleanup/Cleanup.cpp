@@ -21,42 +21,30 @@
 #include "StringConvert.h"
 #include "Timer.h"
 #include "Util.h"
+#include "StopWatch.h"
+#include "ProgressBar.h"
 #include "LaunchProcess.h"
-#include "CryptoHash.h"
 #include <Poco/Exception.h>
 #include <Poco/RegularExpression.h>
-#include <Poco/String.h>
-#include <algorithm>
-#include <filesystem>
+#include <iostream>
 #include <fstream>
 #include <map>
-#include <iostream>
-#include <sstream>
-#include <unordered_map>
-#include <vector>
-#include <tuple>
+#include <boost/algorithm/string/join.hpp>
+
+namespace fs = std::filesystem;
 
 namespace
 {
-    namespace fs = std::filesystem;
-
-    uint32 filesFoundCount = 0;
-    uint32 filesReplaceCount = 0;
-    uint32 ReplaceLines = 0;
-    fs::path _path;
-    std::vector<fs::path> _localeFileStorage;
-    std::vector<std::string> _supportExtensions;
-
-    // Config
-    std::unordered_map<uint8, std::string> _pathList;
+    constexpr auto PATH_TO_SRC = "src/";
+    constexpr auto PATH_TO_MODULES = "modules/";
 
     // Common functions
-    bool IsExitstText(std::string_view text, std::string_view textFind)
+    inline bool IsExitstText(std::string_view text, std::string_view textFind)
     {
         return text.find(textFind) != std::string::npos;
     }
 
-    bool IsExitstText(std::string_view text, std::initializer_list<std::string_view> textFindList)
+    inline bool IsExitstText(std::string_view text, std::initializer_list<std::string_view> textFindList)
     {
         for (auto const& itr : textFindList)
             if (!IsExitstText(text, itr))
@@ -65,749 +53,53 @@ namespace
         return true;
     }
 
-    void GitCommit()
+    inline void GitCommit(std::string_view path, std::string_view cleanupName, std::string_view desc = {})
     {
-        Warhead::Process::Git::CommitAllFiles(_path.generic_string(), "\"chore(Core/Misc): code cleanup\"");
+        Warhead::Process::Git::CommitAllFiles(path, Warhead::StringFormat("chore(Cleanup): cleanup with WarheadCleanup. {}", cleanupName), desc);
+    }
+
+    inline void ShowStats(std::string_view cleanupName, StopWatch const& sw, ReplaceFilesStore const& stats, std::string_view path = {})
+    {
+        LOG_INFO("--");
+        LOG_INFO("> Cleanup stats: {}", cleanupName);
+        LOG_INFO("> Replaced files: {}", stats.size());
+        LOG_INFO("> Elapsed time: {}", sw);
+        LOG_INFO("--");
+
+        if (stats.empty())
+            return;
+
+        std::size_t count{ 0 };
+
+        for (auto const& [fileName, replacedLines] : stats)
+            LOG_INFO("{}. File: {}. Lines: {}", ++count, fileName, replacedLines);
+
+        LOG_INFO("--");
+
+        if (path.empty() || !Warhead::Process::Git::IsRepository(path))
+            return;
+
+        LOG_INFO("> Found repository in dir '{}'", path);
+        LOG_INFO("> Commit this changes? [yes (default) / no]");
+
+        std::string select;
+        std::getline(std::cin, select);
+
+        if (!select.empty() && select.substr(0, 1) != "y")
+            return;
+
+        std::string desc = "-- Warhead cleanup stats:\n";
+        count = 0;
+
+        for (auto const& [fileName, replacedLines] : stats)
+            desc.append(Warhead::StringFormat("{}. File: {}. Lines: {}\n", ++count, fileName, replacedLines));
+
+        LOG_INFO("> Commit this changes. Description:\n{}", desc);
+        GitCommit(path, cleanupName, desc);
     }
 
     // Sort includes
     std::unordered_map<std::string, std::string> _textStore;
-    bool enbaleCheckFirstInclude = true;
-
-    bool IsNormalExtension(fs::path const& path)
-    {
-        for (auto const& _ext : _supportExtensions)
-            if (_ext == path)
-                return true;
-
-        return false;
-    }
-
-    void FillFileList(fs::path const& path)
-    {
-        for (auto& dirEntry : fs::directory_iterator(path))
-        {
-            auto const& path = dirEntry.path();
-
-            if (fs::is_directory(path))
-                FillFileList(path);
-            else if (IsNormalExtension(path.extension()))
-            {
-                _localeFileStorage.emplace_back(path.generic_string());
-                filesFoundCount++;
-            }
-        }
-    }
-
-    void GetStats(uint32 startTimeMS)
-    {
-        LOG_INFO("");
-        LOG_INFO("> Cleanup: ended cleanup for '{}'", _path.generic_string().c_str());
-        LOG_INFO("# -- Found files ({})", filesFoundCount);
-        LOG_INFO("# -- Replace files ({})", filesReplaceCount);
-
-        if (ReplaceLines)
-            LOG_INFO("# -- Replace lines ({})", ReplaceLines);
-
-        LOG_INFO("# -- Used time '{}'", Warhead::Time::ToTimeString<Milliseconds>(GetMSTimeDiffToNow(startTimeMS), TimeOutput::Milliseconds).c_str());
-        LOG_INFO("");
-    }
-
-    void GetListFiles(std::initializer_list<std::string> supportExtensions)
-    {
-        _supportExtensions = supportExtensions;
-
-        FillFileList(_path);
-
-        LOG_INFO("> Cleanup: Found '{}' files", filesFoundCount);
-    }
-
-    // General functions
-    void ReplaceTabstoWhitespaceInFile(fs::path const& path)
-    {
-        std::string text = Warhead::File::GetFileText(path.generic_string());
-
-        uint32 replaceCount = Warhead::String::PatternReplace(text, "(\\t)", " ");
-        if (!replaceCount)
-            return;
-
-        filesReplaceCount++;
-        ReplaceLines += replaceCount;
-        LOG_INFO("{}. File ({}). Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
-
-        std::ofstream file(path);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(text.c_str(), text.size());
-        file.close();
-    }
-
-    void RemoveWhitespaceInFile(fs::path const& path)
-    {
-        std::string text = Warhead::File::GetFileText(path.generic_string());
-
-        uint32 replaceCount = Warhead::String::PatternReplace(text, "(^\\s+$)|( +$)", "");
-        if (!replaceCount)
-            return;
-
-        filesReplaceCount++;
-        ReplaceLines += replaceCount;
-        LOG_INFO("{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), replaceCount);
-
-        std::ofstream file(path);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(text.c_str(), text.size());
-        file.close();
-    }
-
-    void SortIncludesInFile(fs::path const& path)
-    {
-        std::string fileText = Warhead::File::GetFileText(path.generic_string());
-        std::string origText = fileText;
-        std::vector<std::string> _includes;
-        std::unordered_map<std::string, std::string> _toReplace;
-
-        bool isFirstInclude = false;
-        bool isFirst = false;
-        bool isEnd = false;
-
-        auto _SortIncludes = [&]()
-        {
-            std::string unsortIncludes = "";
-            std::string sortIncludes = "";
-            std::string firstInclude = "";
-
-            for (auto const& itr : _includes)
-            {
-                std::string nameFile = path.filename().generic_string();
-                nameFile.erase(nameFile.end() - path.extension().generic_string().length(), nameFile.end());
-
-                if (itr.find("#include \"" + nameFile + ".h") != std::string::npos)
-                    firstInclude = itr;
-            }
-
-            for (auto const& itr : _includes)
-                unsortIncludes += itr + "\n";
-
-            std::sort(_includes.begin(), _includes.end());
-
-            // Added first include
-            if (!firstInclude.empty())
-                sortIncludes += firstInclude + "\n";
-
-            for (auto const& itr : _includes)
-            {
-                if (itr == firstInclude)
-                    continue;
-
-                sortIncludes += itr + "\n";
-            }
-
-            // If uncludes same - no need replace
-            if (unsortIncludes == sortIncludes)
-                return;
-
-            _toReplace.emplace(unsortIncludes, sortIncludes);
-
-            _includes.clear();
-        };
-
-        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
-        {
-            auto found = str.find("#include");
-
-            if (!isEnd && found == std::string::npos)
-            {
-                isEnd = true;
-
-                if (_includes.empty() || _includes.size() == 1)
-                    continue;
-
-                _SortIncludes();
-            }
-
-            if (found != std::string::npos)
-            {
-                if (isFirst)
-                    isFirst = true;
-
-                if (isEnd)
-                    isEnd = false;
-
-                /*if (!isFirstInclude)
-                {
-                    isFirstInclude = true;
-
-                    auto isDefaultInclude = str.find("#include \"") == std::string::npos;
-                    if (isDefaultInclude || !enbaleCheckFirstInclude)
-                        _includes.emplace_back(str);
-                }
-                else*/
-                    _includes.emplace_back(str);
-            }
-        }
-
-        for (auto const& [unsortIncludes, sortIncludes] : _toReplace)
-            fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
-
-        if (fileText == origText)
-            return;
-
-        filesReplaceCount++;
-
-        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
-
-        std::ofstream file(path);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(fileText.c_str(), fileText.size());
-        file.close();
-    }
-
-    void CheckSameIncludes(fs::path const& path)
-    {
-        std::string fileText = Warhead::File::GetFileText(path.generic_string());
-        std::string origText = fileText;
-        std::vector<std::string> _includes;
-        std::vector<std::string> _includesUniqueue;
-        std::unordered_map<std::string, std::string> _toReplace;
-
-        bool isFirstInclude = false;
-        bool isFirst = false;
-        bool isEnd = false;
-
-        auto IsSameInclude = [&](std::string_view includeName)
-        {
-            for (auto const& itr : _includesUniqueue)
-                if (itr == includeName)
-                    return true;
-
-            return false;
-        };
-
-        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
-        {
-            auto found = str.find("#include");
-
-            if (!isEnd && found == std::string::npos)
-            {
-                isEnd = true;
-
-                if (_includes.empty() || _includes.size() == 1)
-                    continue;
-
-                std::string unsortIncludes = "";
-                std::string sortIncludes = "";
-
-                for (auto const& itr : _includes)
-                    unsortIncludes += itr + "\n";
-
-                // Add without same includes
-                for (auto const& itr : _includesUniqueue)
-                    sortIncludes += itr + "\n";
-
-                // If uncludes same - no need replace
-                if (unsortIncludes == sortIncludes)
-                    continue;
-
-                _toReplace.emplace(unsortIncludes, sortIncludes);
-
-                _includes.clear();
-                _includesUniqueue.clear();
-            }
-
-            if (found != std::string::npos)
-            {
-                if (isFirst)
-                    isFirst = true;
-
-                if (isEnd)
-                    isEnd = false;
-
-                _includes.emplace_back(str);
-
-                if (IsSameInclude(str))
-                    LOG_WARN("> Same include '{}' - '{}'", std::string(str).c_str(), path.generic_string().c_str());
-                else
-                    _includesUniqueue.emplace_back(str);
-            }
-        }
-
-        for (auto const& [unsortIncludes, sortIncludes] : _toReplace)
-            fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
-
-        if (fileText == origText)
-            return;
-
-        filesReplaceCount++;
-
-        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
-
-        std::ofstream file(path.c_str());
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(fileText.c_str(), fileText.size());
-        file.close();
-    }
-
-    void CleanExtraDefines(fs::path const& path)
-    {
-        std::string fileText = Warhead::File::GetFileText(path.generic_string());
-
-        std::string origText = fileText;
-        std::map<uint32 /*line number*/, std::string /*line text*/> lineTexts;
-        std::vector<uint32> _toDeleteLines;
-        uint32 lineNumber = 1;
-
-        // Insert default text
-        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
-        {
-            lineTexts.emplace(lineNumber, str);
-            lineNumber++;
-        }
-
-        bool isFoundDefine = false;
-        bool isFoundEndIf = false;
-        lineNumber = 1;
-
-        for (auto& [stringLine, stringText] : lineTexts)
-        {
-            auto foundDefine = stringText.find("ENABLE_EXTRA_LOGS");
-            auto foundEndIf = stringText.find("#endif");
-
-            if (!isFoundDefine && foundDefine != std::string::npos)
-            {
-                isFoundDefine = true;
-                isFoundEndIf = false;
-                _toDeleteLines.emplace_back(lineNumber);
-                ReplaceLines++;
-            }
-            else if (isFoundDefine && !isFoundEndIf && foundEndIf != std::string::npos)
-            {
-                isFoundEndIf = true;
-                isFoundDefine = false;
-                _toDeleteLines.emplace_back(lineNumber);
-                ReplaceLines++;
-            }
-
-            lineNumber++;
-        }
-
-        fileText.clear();
-
-        for (auto itr : _toDeleteLines)
-            lineTexts.erase(itr);
-
-        for (auto const& [stringLine, stringText] : lineTexts)
-            fileText += stringText + "\n";
-
-        // Replace whitespace
-        Warhead::String::PatternReplace(fileText, "(^\\s+$)|( +$)", "");
-
-        if (fileText == origText)
-            return;
-
-        filesReplaceCount++;
-
-        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
-
-        std::ofstream file(path);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(fileText.c_str(), fileText.size());
-        file.close();
-    }
-
-    void CheckIncludesInFile()
-    {
-        std::unordered_map<std::string, uint32> _includes;
-        std::multimap<uint32, std::string, std::greater<uint32>> sortIncludes;
-
-        for (auto const& filePath : _localeFileStorage)
-        {
-            std::string fileText = Warhead::File::GetFileText(filePath.generic_string());
-
-            bool isFirstInclude = false;
-            bool isFirst = false;
-            bool isEnd = false;
-
-            for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
-            {
-                auto found = str.find("#include");
-
-                if (found != std::string::npos)
-                {
-                    auto itr = _includes.find(std::string(str));
-                    if (itr == _includes.end())
-                        _includes.emplace(str, 1);
-                    else
-                        itr->second++;
-                }
-            }
-        }
-
-        uint32 count = 0;
-
-        for (auto const& [strInclude, countInclude] : _includes)
-            sortIncludes.emplace(countInclude, strInclude);
-
-        for (auto const& [countInclude, strInclude] : sortIncludes)
-        {
-            if (countInclude < 3)
-                continue;
-
-            count++;
-
-            LOG_INFO("{}. '{}' - {}", count, strInclude.c_str(), countInclude);
-        }
-    }
-
-    void CheckConfigOptions(std::string const& configType)
-    {
-        std::vector<std::string> _configOptions;
-
-        auto IsExistOption = [&](std::string find)
-        {
-            for (auto const& itr : _configOptions)
-                if (find == itr)
-                    return true;
-
-            return false;
-        };
-
-        std::string stringFind = "sConfigMgr->GetOption<" + configType + ">(\"";
-
-        for (auto const& filePath : _localeFileStorage)
-        {
-            std::string fileText = Warhead::File::GetFileText(filePath.generic_string());
-
-            for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
-            {
-                auto found = str.find(stringFind);
-                if (found != std::string::npos)
-                {
-                    auto res1 = str.substr(found + stringFind.length());
-                    auto found1 = res1.find_first_of('"');
-
-                    if (found1 != std::string::npos)
-                    {
-                        auto res2 = res1.substr(0, found1);
-
-                        if (!IsExistOption(std::string(res2)))
-                            _configOptions.emplace_back(res2);
-                    }
-                }
-            }
-        }
-
-        std::sort(_configOptions.begin(), _configOptions.end());
-
-        uint32 count = 0;
-        std::string fileText = "AddOption({ ";
-
-        for (auto const& option : _configOptions)
-        {
-            count++;
-
-            LOG_INFO("{}. '{}'", count, option.c_str());
-            fileText.append("\"" + option + "\"," + "\n");
-        }
-
-        // Delete last (,\n)
-        if (!fileText.empty())
-            fileText.erase(fileText.end() - 2, fileText.end());
-
-        fileText.append(" });");
-
-        std::string filePath = "F:\\Git\\WarheadBand\\src\\server\\Configs_" + configType + ".txt";
-
-        if (configType == "std::string")
-            filePath = "F:\\Git\\WarheadBand\\src\\server\\Configs_std_string.txt";
-
-        std::ofstream file(filePath);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", filePath.c_str());
-            return;
-        }
-
-        file.write(fileText.c_str(), fileText.size());
-        file.close();
-    }
-
-    void ReplaceOldAPIConfigOptions(std::string const& configType)
-    {
-        std::unordered_map<std::string/*index*/, std::string /*option*/> _configOptions;
-
-        auto IsExistOption = [&](std::string find)
-        {
-            auto const& itr = _configOptions.find(find);
-            if (itr != _configOptions.end())
-            {
-                LOG_FATAL("> Dubicate option ({})", find.c_str());
-                return true;
-            }
-
-            return false;
-        };
-
-        auto GetStringFnOld = [&](std::string const& confIndex) -> std::string
-        {
-            if (configType == "bool")
-                return "sWorld->getBoolConfig(" + confIndex + ")";
-            else if (configType == "int32" || configType == "uint32")
-                return "sWorld->getIntConfig(" + confIndex + ")";
-            else if (configType == "float")
-                return "sWorld->getFloatConfig(" + confIndex + ")";
-            else if (configType == "rate")
-                return "sWorld->getRate(" + confIndex + ")";
-
-            LOG_FATAL("GetStringFnOld");
-            return "";
-        };
-
-        auto GetStringFnNew = [&](std::string const& confName) -> std::string
-        {
-            if (configType == "bool")
-                return "CONF_GET_BOOL(\"" + confName + "\")";
-            else if (configType == "int32")
-                return "CONF_GET_INT(\"" + confName + "\")";
-            else if (configType == "uint32")
-                return "CONF_GET_UINT(\"" + confName + "\")";
-            else if (configType == "float" || configType == "rate")
-                return "CONF_GET_FLOAT(\"" + confName + "\")";
-
-            LOG_FATAL("GetStringFnNew");
-            return "";
-        };
-
-        auto GetOptions = [&]()
-        {
-            std::string stringFindIndex;
-            std::string stringFindMgr = "sConfigMgr->GetOption<" + configType + ">(\"";
-
-            if (configType == "bool")
-                stringFindIndex = "m_bool_configs[";
-            else if (configType == "int32" || configType == "uint32")
-                stringFindIndex = "m_int_configs[";
-            else if (configType == "float")
-                stringFindIndex = "m_float_configs[";
-            else if (configType == "rate")
-            {
-                stringFindIndex = "rate_values[";
-                stringFindMgr = "sConfigMgr->GetOption<float>(\"";
-            }
-
-            std::string _fileText = Warhead::File::GetFileText("F:\\Git\\WarheadBand\\src\\server\\game\\World\\World.cpp");
-
-            for (auto const& str : Warhead::Tokenize(_fileText, '\n', true))
-            {
-                auto foundMgr = str.find(stringFindMgr);
-                auto foundIndex = str.find(stringFindIndex);
-
-                if (foundMgr != std::string::npos && foundIndex != std::string::npos)
-                {
-                    auto resMgr1 = str.substr(foundMgr + stringFindMgr.length());
-                    auto foundMgr1 = resMgr1.find_first_of('"');
-
-                    auto resIndex1 = str.substr(foundIndex + stringFindIndex.length());
-                    auto foundIndex1 = resIndex1.find_first_of(']');
-
-                    if (foundMgr1 != std::string::npos && foundIndex1 != std::string::npos)
-                    {
-                        auto resMgr2 = resMgr1.substr(0, foundMgr1);
-                        auto resIndex2 = resIndex1.substr(0, foundIndex1);
-
-                        _configOptions.emplace(resIndex2, resMgr2);
-                        //LOG_INFO("> {} - {}", GetStringFnOld(std::string(resIndex2)).c_str(), GetStringFnNew(std::string(resMgr2)).c_str());
-                    }
-                }
-            }
-        };
-
-        GetOptions();
-
-        for (auto const& filePath : _localeFileStorage)
-        {
-            LOG_TRACE("> Replace file - ({})", filePath.generic_string().c_str());
-
-            std::string fileText = Warhead::File::GetFileText(filePath.generic_string());
-            std::string origText = fileText;
-
-            for (auto const& [confIndex, confName] : _configOptions)
-                fileText = Warhead::String::ReplaceInPlace(fileText, GetStringFnOld(confIndex), GetStringFnNew(confName));
-
-            if (fileText == origText)
-                continue;
-
-            std::ofstream file(filePath);
-            if (!file.is_open())
-            {
-                LOG_FATAL("Failed open file \"{}\"!", filePath.generic_string().c_str());
-                continue;
-            }
-
-            file.write(fileText.c_str(), fileText.size());
-            file.close();
-        }
-    }
-
-    void ReplaceLoggingPattern(fs::path const& path)
-    {
-        std::string fileText = Warhead::File::GetFileText(path.generic_string());
-        std::string origText = fileText;
-
-        auto ReplacePattern = [](std::string& str, std::string_view from, std::string_view to, std::string_view::size_type start = 0)
-        {
-            std::string result;
-            std::string::size_type pos = 0;
-
-            result.append(str, 0, start);
-            pos = str.find(from, start);
-
-            if (pos != std::string::npos)
-            {
-                result.append(str, start, pos - start);
-                result.append(to);
-                start = pos + from.length();
-            }
-            else
-                result.append(str, start, str.size() - start);
-
-            str.swap(result);
-
-            return str;
-        };
-
-        std::unordered_map<std::string, std::string> textLine;
-
-        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
-        {
-            if (IsExitstText(str, { "LOG_", "%" }) ||
-                IsExitstText(str, "StringFormat(") ||
-                IsExitstText(str, "ASSERT") ||
-                IsExitstText(str, "PSendSysMessage") ||
-                IsExitstText(str, "PQuery") ||
-                IsExitstText(str, "PExecute") ||
-                IsExitstText(str, "PAppend") ||
-                IsExitstText(str, "SendNotification"))
-            {
-                std::string text{ str };
-
-                text = Warhead::String::ReplaceInPlace(text, "%s", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%u", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%hu", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%lu", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%llu", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%02u", "{:02}");
-                text = Warhead::String::ReplaceInPlace(text, "%03u", "{:03}");
-                text = Warhead::String::ReplaceInPlace(text, "%d", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%i", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%x", "{:x}");
-                text = Warhead::String::ReplaceInPlace(text, "%X", "{:X}");
-                text = Warhead::String::ReplaceInPlace(text, "%lx", "{:x}");
-                text = Warhead::String::ReplaceInPlace(text, "%lX", "{:X}");
-                text = Warhead::String::ReplaceInPlace(text, "%02X", "{:02X}");
-                text = Warhead::String::ReplaceInPlace(text, "%08X", "{:08X}");
-                text = Warhead::String::ReplaceInPlace(text, "%f", "{}");
-                text = Warhead::String::ReplaceInPlace(text, "%.1f", "{0:.1f}");
-                text = Warhead::String::ReplaceInPlace(text, "%.2f", "{0:.2f}");
-                text = Warhead::String::ReplaceInPlace(text, "%.3f", "{0:.3f}");
-                text = Warhead::String::ReplaceInPlace(text, "%.4f", "{0:.4f}");
-                text = Warhead::String::ReplaceInPlace(text, "%.5f", "{0:.5f}");
-                text = Warhead::String::ReplaceInPlace(text, "%3.1f", "{:3.1f}");
-                text = Warhead::String::ReplaceInPlace(text, "%%", "%");
-                text = Warhead::String::ReplaceInPlace(text, "GetGUID().ToString().c_str()", "GetGUID()");
-                text = Warhead::String::ReplaceInPlace(text, ".c_str()", "");                
-
-                textLine.emplace(str, text);
-            }
-        }
-
-        if (textLine.empty())
-            return;
-
-        for (auto const& [_textOrig, _textReplaced] : textLine)
-            fileText = Warhead::String::ReplaceInPlace(fileText, _textOrig, _textReplaced);
-
-        if (fileText == origText)
-            return;
-
-        filesReplaceCount++;
-
-        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
-
-        std::ofstream file(path);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(fileText.c_str(), fileText.size());
-        file.close();
-    }
-
-    void ReplaceSQLVariable(fs::path const& path)
-    {
-        std::string text = Warhead::File::GetFileText(path.generic_string());
-        std::string origText = text;
-
-        auto ReplaceVariables = [&](std::string const& varName)
-        {
-            auto pattern = Warhead::StringFormat("( {0}\\([0-9]\\))|( {0}\\([0-9][0-9]\\))|( {0}\\([0-9][0-9][0-9]\\))", varName);
-            auto upperVar = " " + Poco::toUpper(varName);
-
-            auto replaceCount = Warhead::String::PatternReplace(text, pattern, upperVar);
-            if (!replaceCount)
-                return;
-
-            ReplaceLines += replaceCount;            
-        };
-
-        ReplaceVariables("int");
-        ReplaceVariables("tinyint");
-        ReplaceVariables("smallint");
-        ReplaceVariables("bigint");
-
-        if (text == origText)
-            return;
-
-        filesReplaceCount++;
-
-        LOG_INFO("{}. '{}'", filesReplaceCount, path.filename().generic_string().c_str());
-
-        std::ofstream file(path);
-        if (!file.is_open())
-        {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
-            return;
-        }
-
-        file.write(text.c_str(), text.size());
-        file.close();
-    }
 }
 
 Cleanup* Cleanup::instance()
@@ -818,11 +110,30 @@ Cleanup* Cleanup::instance()
 
 void Cleanup::RemoveWhitespace()
 {
-    system("cls");
+    std::system("cls");
 
     SendPathInfo();
 
-    GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+    if (IsCoreDir(_path))
+    {
+        LOG_INFO("> Found core dir. Check src and modules dirs only");
+
+        fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
+        fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
+
+        FillFileList(pathtoSrc, { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+        FillFileList(pathtoModules, { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+    }
+    else
+        FillFileList(_path, { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+
+    if (_localeFileStorage.empty())
+    {
+        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        return;
+    }
+
+    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
 
     LOG_INFO("> Start cleanup? [yes (default) / no]");
 
@@ -832,23 +143,25 @@ void Cleanup::RemoveWhitespace()
     if (!select.empty() && select.substr(0, 1) != "y")
         return;
 
-    uint32 ms = getMSTime();
+    StopWatch sw;
 
-    LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '{}'", _path.generic_string().c_str());
+    LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '{}'", _path.generic_string());
 
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
+    ReplaceFilesStore stats;
+    std::size_t size{ _localeFileStorage.size() };
+    ProgressBar bar("", size);
+    std::size_t count{ 0 };
 
     for (auto const& filePath : _localeFileStorage)
-        RemoveWhitespaceInFile(filePath);
-
-    GetStats(ms);
-
-    if (filesReplaceCount)
     {
-        LOG_INFO("> Commit this changes...");
-        GitCommit();
+        RemoveWhitespaceInFile(filePath, stats);
+        bar.UpdatePostfixText(Warhead::StringFormat("{}/{}", ++count, size));
+        bar.Update();
     }
+
+    bar.Stop();
+
+    ShowStats("Remove whitespace", sw, stats, _path.generic_string());
 }
 
 void Cleanup::ReplaceTabs()
@@ -857,7 +170,26 @@ void Cleanup::ReplaceTabs()
 
     SendPathInfo();
 
-    GetListFiles({ ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+    if (IsCoreDir(_path))
+    {
+        LOG_INFO("> Found core dir. Check src and modules dirs only");
+
+        fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
+        fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
+
+        FillFileList(pathtoSrc, { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+        FillFileList(pathtoModules, { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+    }
+    else
+        FillFileList(_path, { ".cpp", ".h", ".dist", ".conf", ".txt", ".cmake" });
+
+    if (_localeFileStorage.empty())
+    {
+        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        return;
+    }
+
+    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
 
     LOG_INFO("> Start cleanup? [yes (default) / no]");
 
@@ -867,17 +199,25 @@ void Cleanup::ReplaceTabs()
     if (!select.empty() && select.substr(0, 1) != "y")
         return;
 
-    uint32 ms = getMSTime();
+    StopWatch sw;
 
     LOG_INFO("> Cleanup: Start cleanup (replace tabs) for '{}'", _path.generic_string().c_str());
 
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
+    ReplaceFilesStore stats;
+    std::size_t size{ _localeFileStorage.size() };
+    ProgressBar bar("", size);
+    std::size_t count{ 0 };
 
     for (auto const& filePath : _localeFileStorage)
-        ReplaceTabstoWhitespaceInFile(filePath);
+    {
+        ReplaceTabstoWhitespaceInFile(filePath, stats);
+        bar.UpdatePostfixText(Warhead::StringFormat("{}/{}", ++count, size));
+        bar.Update();
+    }
 
-    GetStats(ms);
+    bar.Stop();
+
+    ShowStats("Replace tabs", sw, stats, _path.generic_string());
 }
 
 void Cleanup::SortIncludes()
@@ -886,13 +226,27 @@ void Cleanup::SortIncludes()
 
     SendPathInfo();
 
-    GetListFiles({ ".cpp", ".h" });
+    if (IsCoreDir(_path))
+    {
+        LOG_INFO("> Found core dir. Check src and modules dirs only");
 
-    enbaleCheckFirstInclude = sConfigMgr->GetOption<bool>("Cleanup.CleanInclude.CheckFirst.Enable", true);
+        fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
+        fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
 
-    LOG_INFO("# -- Sort Includes options: ");
-    LOG_INFO("> Skip check first include - '{:s}'", enbaleCheckFirstInclude);
-    LOG_INFO("# --");
+        FillFileList(pathtoSrc, { ".cpp", ".h" });
+        FillFileList(pathtoModules, { ".cpp", ".h" });
+    }
+    else
+        FillFileList(_path, { ".cpp", ".h" });
+
+    if (_localeFileStorage.empty())
+    {
+        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        return;
+    }
+
+    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
+
     LOG_INFO("> Start cleanup? [yes (default) / no]");
 
     std::string select;
@@ -901,17 +255,25 @@ void Cleanup::SortIncludes()
     if (!select.empty() && select.substr(0, 1) != "y")
         return;
 
-    uint32 ms = getMSTime();
+    StopWatch sw;
 
     LOG_INFO("> Cleanup: Start cleanup (sort includes) for '{}'", _path.generic_string().c_str());
 
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
+    ReplaceFilesStore stats;
+    std::size_t size{ _localeFileStorage.size() };
+    ProgressBar bar("", size);
+    std::size_t count{ 0 };
 
     for (auto const& filePath : _localeFileStorage)
-        SortIncludesInFile(filePath);
+    {
+        SortIncludesInFile(filePath, stats);
+        bar.UpdatePostfixText(Warhead::StringFormat("{}/{}", ++count, size));
+        bar.Update();
+    }
 
-    GetStats(ms);
+    bar.Stop();
+
+    ShowStats("Sort includes", sw, stats, _path.generic_string());
 }
 
 void Cleanup::CheckSameIncludes()
@@ -920,7 +282,26 @@ void Cleanup::CheckSameIncludes()
 
     SendPathInfo();
 
-    GetListFiles({ ".cpp", ".h" });
+    if (IsCoreDir(_path))
+    {
+        LOG_INFO("> Found core dir. Check src and modules dirs only");
+
+        fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
+        fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
+
+        FillFileList(pathtoSrc, { ".cpp", ".h" });
+        FillFileList(pathtoModules, { ".cpp", ".h" });
+    }
+    else
+        FillFileList(_path, { ".cpp", ".h" });
+
+    if (_localeFileStorage.empty())
+    {
+        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        return;
+    }
+
+    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
 
     LOG_INFO("> Start cleanup? [yes (default) / no]");
 
@@ -930,55 +311,42 @@ void Cleanup::CheckSameIncludes()
     if (!select.empty() && select.substr(0, 1) != "y")
         return;
 
-    uint32 ms = getMSTime();
+    StopWatch sw;
 
     LOG_INFO("> Cleanup: Start cleanup (same includes) for '{}'", _path.generic_string().c_str());
 
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
+    ReplaceFilesStore stats;
+    std::size_t size{ _localeFileStorage.size() };
+    ProgressBar bar("", size);
+    std::size_t count{ 0 };
 
     for (auto const& filePath : _localeFileStorage)
-        ::CheckSameIncludes(filePath);
+    {
+        CheckSameIncludes(filePath, stats);
+        bar.UpdatePostfixText(Warhead::StringFormat("{}/{}", ++count, size));
+        bar.Update();
+    }
 
-    GetStats(ms);
-}
+    bar.Stop();
 
-void Cleanup::CheckExtraLogs()
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".cpp", ".h"});
-
-    LOG_INFO("> Start cleanup? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start cleanup (remove extra logs define) for '{}'", _path.generic_string().c_str());
-
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
-
-    for (auto const& filePath : _localeFileStorage)
-        ::CleanExtraDefines(filePath);
-
-    GetStats(ms);
+    ShowStats("Same includes", sw, stats, _path.generic_string());
 }
 
 void Cleanup::CheckUsingIncludesCount()
 {
     system("cls");
 
-    SendPathInfo();
+    SendPathInfo(true);
 
-    GetListFiles({ ".cpp", ".h"});
+    FillFileList(_path, { ".cpp", ".h" });
+
+    if (_localeFileStorage.empty())
+    {
+        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        return;
+    }
+
+    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
 
     LOG_INFO("> Start job? [yes (default) / no]");
 
@@ -987,241 +355,10 @@ void Cleanup::CheckUsingIncludesCount()
 
     if (!select.empty() && select.substr(0, 1) != "y")
         return;
-
-    uint32 ms = getMSTime();
 
     LOG_INFO("> Cleanup: Start job (check includes count) for '{}'", _path.generic_string().c_str());
 
-    ::CheckIncludesInFile();
-}
-
-void Cleanup::CheckConfigOptions(std::string const& configType)
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".cpp", ".h" });
-
-    LOG_INFO("> Start job? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start job (check config options '{}') for '{}'", configType.c_str(), _path.generic_string().c_str());
-
-    ::CheckConfigOptions(configType);
-}
-
-void Cleanup::ReplaceConfigOptions()
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".cpp", ".h" });
-
-    LOG_INFO("> Start job? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start job (replace config options) for '{}'", _path.generic_string().c_str());
-
-    ::ReplaceOldAPIConfigOptions("bool");
-    ::ReplaceOldAPIConfigOptions("float");
-    ::ReplaceOldAPIConfigOptions("int32");
-    ::ReplaceOldAPIConfigOptions("uint32");
-    ::ReplaceOldAPIConfigOptions("rate");
-}
-
-void Cleanup::ReplaceLoggingFormat()
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".cpp", ".h" });
-
-    LOG_INFO("> Start replace? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start replace (logging format) for '{}'", _path.generic_string().c_str());
-
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
-
-    for (auto const& filePath : _localeFileStorage)
-        ::ReplaceLoggingPattern(filePath);
-
-    GetStats(ms);
-}
-
-void Cleanup::RenameFiles()
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".cpp", ".h" });
-
-    LOG_INFO("> Start replace? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start replace (Manger to Mgr) for '{}'", _path.generic_string().c_str());
-
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
-
-    for (auto const& filePath : _localeFileStorage)
-    {
-        auto fileName = filePath.filename().generic_string();
-        auto found = fileName.find("Manager");
-
-        if (found == std::string::npos)
-            continue;
-
-        auto& newFileName = fileName;
-        Warhead::String::ReplaceInPlace(newFileName, "Manager", "Mgr");
-
-        auto dirName = filePath.generic_string();
-        dirName.erase(dirName.end() - fileName.length(), dirName.end());
-
-        auto& oldPath = filePath;
-        auto newPath = dirName + newFileName;
-
-        if (oldPath == newPath)
-            continue; // ?
-
-        fs::rename(oldPath, newPath);
-    }
-
-    GetStats(ms);
-}
-
-void Cleanup::CheckSha1DBFiles()
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".sql" });
-
-    LOG_INFO("> Start check? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start check SHA1 hash '{}'", _path.generic_string().c_str());
-
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
-
-    std::unordered_map<std::string, std::string> hashStore;
-    std::string fileText = "--\nDELETE FROM `updates` WHERE `name` IN (";
-
-    uint32 count = 1;
-
-    for (auto const& filePath : _localeFileStorage)
-    {
-        std::string const hash = ByteArrayToHexStr(Warhead::Crypto::SHA1::GetDigestOf(Warhead::File::GetFileText(filePath.generic_string())));
-        std::string const fileName = filePath.filename().generic_string();
-
-        //LOG_INFO("{}. '{}' - '{}'", count, fileName, hash);
-
-        hashStore.emplace(fileName, hash);
-        count++;
-    }
-
-    for (auto const& [fileName, hash] : hashStore)
-        fileText += "'" + fileName + "', ";
-
-    // Delete last ( ,)
-    if (!fileText.empty())
-        fileText.erase(fileText.end() - 2, fileText.end());
-
-    fileText += ");\nINSERT INTO `updates` (`name`, `hash`, `state`, `timestamp`, `speed`) VALUES\n";
-
-    for (auto const& [fileName, hash] : hashStore)
-        fileText += "('" + fileName + "', '" + hash + "', 'ARCHIVED', '2021-10-14 04:13:44', 1),\n";
-
-    // Delete last (,)
-    if (!fileText.empty())
-        fileText.erase(fileText.end() - 2, fileText.end());
-
-    fileText += ";";
-
-    LOG_INFO("\n{}", fileText);
-
-    std::ofstream file(_path.generic_string() + "/archive.sql");
-    if (!file.is_open())
-    {
-        LOG_FATAL("Failed open file \"{}\"!", _path.generic_string());
-        return;
-    }
-
-    file.write(fileText.c_str(), fileText.size());
-    file.close();
-
-    LOG_INFO("--");
-}
-
-void Cleanup::CorrectDBFiles()
-{
-    system("cls");
-
-    SendPathInfo();
-
-    GetListFiles({ ".sql" });
-
-    LOG_INFO("> Start replace? [yes (default) / no]");
-
-    std::string select;
-    std::getline(std::cin, select);
-
-    if (!select.empty() && select.substr(0, 1) != "y")
-        return;
-
-    uint32 ms = getMSTime();
-
-    LOG_INFO("> Cleanup: Start replace (SQL variables) for '{}'", _path.generic_string().c_str());
-
-    filesReplaceCount = 0;
-    ReplaceLines = 0;
-
-    for (auto const& filePath : _localeFileStorage)
-        ::ReplaceSQLVariable(filePath);
-
-    GetStats(ms);
+    CheckIncludesInFile();
 }
 
 // Path helpers
@@ -1247,14 +384,8 @@ std::string const Cleanup::GetPath()
     return _path.generic_string();
 }
 
-uint32 Cleanup::GetFoundFiles()
-{
-    return filesFoundCount;
-}
-
 void Cleanup::CleanPath()
 {
-    filesFoundCount = 0;
     _localeFileStorage.clear();
     _path.clear();
 }
@@ -1264,7 +395,7 @@ bool Cleanup::IsCorrectPath()
     return !_path.empty() && fs::is_directory(_path);
 }
 
-void Cleanup::SendPathInfo()
+void Cleanup::SendPathInfo(bool manually /*= false*/)
 {
     CleanPath();
 
@@ -1292,33 +423,41 @@ void Cleanup::SendPathInfo()
     {
         LOG_FATAL(">> Path is empty! Please enter path.");
 
-        for (auto const& [index, _path] : _pathList)
+        if (!manually)
         {
-            LOG_INFO("{}. '{}'", index, _path.c_str());
-        }
+            for (auto const& [index, _path] : _pathList)
+            {
+                LOG_INFO("{}. '{}'", index, _path.c_str());
+            }
 
-        LOG_INFO("# --");
-        LOG_INFO("8. Enter path manually");
-        LOG_INFO("> Select:");
+            LOG_INFO("# --");
+            LOG_INFO("8. Enter path manually");
+            LOG_INFO("> Select:");
+        }
+        else
+        {
+            LOG_INFO("# --");
+            LOG_INFO("-- Enter path");
+        }
 
         std::string selPathEnter;
         std::getline(std::cin, selPathEnter);
 
         system("cls");
 
-        if (!SetPath(GetPathFromConsole(*Warhead::StringTo<uint32>(selPathEnter))))
-            SendPathInfo();
+        if (!SetPath(!manually ? GetPathFromConsole(*Warhead::StringTo<uint32>(selPathEnter)) : selPathEnter))
+            SendPathInfo(manually);
     }
     else
-        LOG_INFO(">> Entered path '{}'", pathInfo.c_str());
+        LOG_INFO(">> Entered path '{}'", pathInfo);
 
     if (!IsCorrectPath())
-        SendPathInfo();
+        SendPathInfo(manually);
 }
 
 void Cleanup::LoadPathInfo()
 {
-    sConfigMgr->Configure("F:\\Git\\KargatumConsole\\src\\app\\Cleanup\\cleanup.conf");
+    sConfigMgr->Configure("Cleanup.conf");
 
     if (!sConfigMgr->LoadAppConfigs())
     {
@@ -1331,185 +470,345 @@ void Cleanup::LoadPathInfo()
     _pathList.clear();
 
     std::string pathStr = sConfigMgr->GetOption<std::string>("Cleanup.PathList", "");
-    std::vector<std::string_view> tokens = Warhead::Tokenize(pathStr, ',', false);
-    uint8 index = 1;
-
-    for (auto const& itr : tokens)
+    if (pathStr.empty())
     {
-        LOG_DEBUG("> Added path '{}'. Index {}", std::string(itr).c_str(), index);
-        _pathList.emplace(index, itr);
-        index++;
+        LOG_FATAL("Cleanup: Config option 'Cleanup.PathList' is empty!");
+        return;
     }
 
-    LOG_INFO("> Loaded {} paths", static_cast<uint32>(_pathList.size()));
+    std::vector<std::string_view> tokens = Warhead::Tokenize(pathStr, ',', false);
+    if (tokens.empty())
+    {
+        LOG_FATAL("Cleanup: Config option 'Cleanup.PathList' is incorrect!");
+        return;
+    }
+
+    auto CorrectPath = [](std::string& path)
+    {
+        if (!path.empty() && (path.at(path.length() - 1) != '/') && (path.at(path.length() - 1) != '\\'))
+            path.push_back('/');
+    };
+
+    std::size_t index{ 0 };
+
+    for (auto const& path : tokens)
+    {
+        LOG_DEBUG("> Added path '{}'. Index {}", path, ++index);
+
+        std::string toStr{ path };
+        CorrectPath(toStr);
+        _pathList.emplace(index, toStr);
+    }
+
+    LOG_INFO("> Loaded {} paths", _pathList.size());
     LOG_INFO("--");
 }
 
+// private fn
+void Cleanup::FillFileList(std::filesystem::path const& path, std::initializer_list<std::string> extensionsList)
+{
+    if (!IsCorrectPath())
+    {
+        LOG_ERROR("Cleanup: Incorrect path at FillFileList. Path '{}'", path.generic_string());
+        return;
+    }
 
-///
+    LOG_DEBUG("> Search files in '{}'. Ext list: {}", path.generic_string(), boost::algorithm::join(extensionsList, " "));
 
-//#include <unordered_map>
-//#include <unordered_set>
-//#include "Util.h"
-//#include <fstream>
-//#include <optional>
+    for (auto const& dirEntry : fs::recursive_directory_iterator(path))
+    {
+        auto const& path = dirEntry.path();
 
-//std::unordered_map<uint32, std::string> sqlColumns;
-//std::unordered_map<uint32, std::string> sqlData;
-//
-//std::optional<std::string> GetColumnNameFromID(uint32 columnNumber)
-//{
-//    for (auto const& [_index, _columnName] : sqlColumns)
-//        if (_index == columnNumber)
-//            return _columnName;
-//
-//    return {};
-//}
-//
-//bool IsColumnDisable(uint32 columnNumber)
-//{
-//    auto colName = GetColumnNameFromID(columnNumber);
-//    if (!colName)
-//        return false;
-//
-//    std::vector<std::string> disableColumns =
-//    {
-//        "`resistance1`", "`resistance2`", "`resistance3`", "`resistance4`", "`resistance5`", "`resistance6`",
-//        "`spell1`", "`spell2`", "`spell3`", "`spell4`", "`spell5`", "`spell6`", "`spell7`", "`spell8`",
-//        "`OfferRewardText`",
-//        "`mindmg`", "`maxdmg`", "`attackpower`", "`minrangedmg`", "`maxrangedmg`", "`rangedattackpower`"
-//    };
-//
-//    /*std::vector<std::string> disableColumns =
-//    {
-//        "`QuestInfoID`", "`QuestSortID`", "`Flags`", "`LogTitle`", "`LogDescription`", "`QuestDescription`", "`RequiredNpcOrGo1`", "`RequiredNpcOrGoCount1`"
-//    };*/
-//
-//    for (auto const& itr : disableColumns)
-//        if (*colName == itr)
-//            return true;
-//
-//    return false;
-//}
-//
-//std::optional<std::string> GetCorrectColumn(std::string const& columnName)
-//{
-//    std::unordered_map<std::string, std::string> incorrectColumns =
-//    {
-//        { "`Health_mod`", "`HealthModifier`"},
-//        { "`Mana_mod`", "`ManaModifier`"},
-//        { "`Armor_mod`", "`ArmorModifier`"},
-//        { "`dmg_multiplier`", "`DamageModifier`"},
-//    };
-//
-//    auto const& itr = incorrectColumns.find(columnName);
-//    if (itr != incorrectColumns.end())
-//        return itr->second;
-//
-//    return {};
-//}
-//
-//void Print()
-//{
-//    LOG_INFO("");
-//    LOG_INFO("");
-//
-//    auto const& fullText = Warhead::File::GetFileText("C:\\Users\\Dowla\\Desktop\\sql1.sql");
-//    std::string newText;
-//
-//    for (auto const& text : Warhead::Tokenize(fullText, ';', false))
-//    {
-//        //LOG_INFO("'{}'", text);
-//
-//        auto startColumns = text.find_first_of("(");
-//        auto endColumns = text.find_first_of(")");
-//        auto resultStartText = text.substr(0, startColumns + 1);
-//
-//        sqlColumns.clear();
-//        sqlData.clear();
-//
-//        if (startColumns != std::string::npos && endColumns != std::string::npos)
-//        {
-//            auto resultColumns = text.substr(startColumns + 1, endColumns - startColumns - 1);
-//            auto resultStartText = text.substr(0, startColumns + 1);
-//
-//            uint32 count = 0;
-//            for (auto const& itr : Warhead::Tokenize(resultColumns, ',', false))
-//            {
-//                std::string column = std::string(itr);
-//                column = Warhead::String::Trim(column);
-//                sqlColumns.emplace(count, column);
-//                count++;
-//            }
-//
-//            count = 0;
-//
-//            auto startData = text.find_last_of("(");
-//            auto endData = text.find_last_of(")");
-//
-//            if (startData != std::string::npos && endData != std::string::npos)
-//            {
-//                auto resultData = text.substr(startData + 1, endData - startData - 1);
-//
-//                for (auto const& itr : Warhead::Tokenize(resultData, ',', false))
-//                {
-//                    std::string column = std::string(itr);
-//                    column = Warhead::String::Trim(column);
-//                    sqlData.emplace(count, column);
-//                    count++;
-//                }
-//            }
-//        }
-//
-//        std::string sqlQueryText = std::string(resultStartText);
-//
-//        if (sqlColumns.empty() || sqlData.empty())
-//            continue;
-//
-//        for (auto const& [index, str] : sqlColumns)
-//        {
-//            if (IsColumnDisable(index))
-//                continue;
-//
-//            std::string colName = str;
-//
-//            if (auto correctColumn = GetCorrectColumn(str))
-//                colName = *correctColumn;
-//
-//            sqlQueryText.append(colName + ", ");
-//        }
-//
-//        sqlQueryText.erase(sqlQueryText.size() - 2, 2);
-//        sqlQueryText.append(") VALUES \n(");
-//
-//        for (auto const& [index, str] : sqlData)
-//        {
-//            if (IsColumnDisable(index))
-//                continue;
-//
-//            sqlQueryText.append(str + ", ");
-//        }
-//
-//        sqlQueryText.erase(sqlQueryText.size() - 2, 2);
-//        sqlQueryText.append(");\n");
-//
-//        newText.append(sqlQueryText);
-//    }
-//
-//    if (newText.empty())
-//    {
-//        LOG_FATAL("> newText empty!");
-//        return;
-//    }
-//
-//    auto filePath = "C:\\Users\\Dowla\\Desktop\\WHsql.sql";
-//    std::ofstream file(filePath);
-//    if (!file.is_open())
-//    {
-//        LOG_FATAL("Failed open file \"{}\"!", filePath);
-//        return;
-//    }
-//
-//    file.write(newText.c_str(), newText.size());
-//    file.close();
-//}
+        auto const& find = std::find_if(std::begin(extensionsList), std::end(extensionsList), [path](std::string const& ext)
+        {
+            return path.has_extension() && path.extension() == ext;
+        });
+
+        if (find != std::end(extensionsList))
+            _localeFileStorage.emplace_back(path);
+    }
+}
+
+bool Cleanup::IsCoreDir(std::filesystem::path const& path)
+{
+    fs::path pathtoSrc{ path.generic_string() + PATH_TO_SRC };
+    fs::path pathtoModules{ path.generic_string() + PATH_TO_MODULES };
+
+    try
+    {
+        return fs::exists(pathtoSrc) && fs::exists(pathtoModules) && fs::is_directory(pathtoSrc) && fs::is_directory(pathtoSrc);
+    }
+    catch (fs::filesystem_error const& error)
+    {
+        LOG_ERROR("> Error at check path: {}", error.what());        
+    }
+
+    return false;
+}
+
+bool Cleanup::RemoveWhitespaceInFile(std::filesystem::path const& path, ReplaceFilesStore& stats)
+{
+    std::string text = Warhead::File::GetFileText(path.generic_string());
+
+    uint32 replaceCount = Warhead::String::PatternReplace(text, "(^\\s+$)|( +$)", "");
+    if (!replaceCount)
+        return false;
+
+    stats.emplace_back(path.filename().generic_string(), replaceCount);
+
+    std::ofstream file(path);
+    if (!file.is_open())
+        return false;
+
+    file.write(text.c_str(), text.size());
+    file.close();
+    return true;
+}
+
+void Cleanup::ReplaceTabstoWhitespaceInFile(std::filesystem::path const& path, ReplaceFilesStore& stats)
+{
+    std::string text = Warhead::File::GetFileText(path.generic_string());
+
+    uint32 replaceCount = Warhead::String::PatternReplace(text, "(\\t)", " ");
+    if (!replaceCount)
+        return;
+
+    stats.emplace_back(path.filename().generic_string(), replaceCount);
+
+    std::ofstream file(path);
+    if (!file.is_open())
+        return;
+
+    file.write(text.c_str(), text.size());
+    file.close();
+}
+
+void Cleanup::SortIncludesInFile(std::filesystem::path const& path, ReplaceFilesStore& stats)
+{
+    std::string fileText = Warhead::File::GetFileText(path.generic_string());
+    std::string origText = fileText;
+    std::vector<std::string> _includes;
+    std::unordered_map<std::string, std::string> _toReplace;
+    std::size_t replaceCount{ 0 };
+    bool isFirstInclude = false;
+    bool isFirst = false;
+    bool isEnd = false;
+
+    auto _SortIncludes = [&]()
+    {
+        std::string unsortIncludes;
+        std::string sortIncludes;
+        std::string firstInclude;
+
+        for (auto const& itr : _includes)
+        {
+            std::string nameFile = path.filename().generic_string();
+            nameFile.erase(nameFile.end() - path.extension().generic_string().length(), nameFile.end());
+
+            if (itr.find("#include \"" + nameFile + ".h") != std::string::npos)
+                firstInclude = itr;
+        }
+
+        for (auto const& itr : _includes)
+            unsortIncludes += itr + "\n";
+
+        std::sort(_includes.begin(), _includes.end());
+
+        // Added first include
+        if (!firstInclude.empty())
+            sortIncludes += firstInclude + "\n";
+
+        for (auto const& itr : _includes)
+        {
+            if (itr == firstInclude)
+                continue;
+
+            sortIncludes += itr + "\n";
+        }
+
+        // If uncludes same - no need replace
+        if (unsortIncludes == sortIncludes)
+            return;
+
+        _toReplace.emplace(unsortIncludes, sortIncludes);
+        _includes.clear();
+        replaceCount++;
+    };
+
+    for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
+    {
+        auto found = str.find("#include");
+
+        if (!isEnd && found == std::string::npos)
+        {
+            isEnd = true;
+
+            if (_includes.empty() || _includes.size() == 1)
+                continue;
+
+            _SortIncludes();
+        }
+
+        if (found != std::string::npos)
+        {
+            if (isFirst)
+                isFirst = true;
+
+            if (isEnd)
+                isEnd = false;
+
+            _includes.emplace_back(str);
+        }
+    }
+
+    if (_toReplace.empty())
+        return;
+
+    for (auto const& [unsortIncludes, sortIncludes] : _toReplace)
+        fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
+
+    if (fileText == origText)
+        return;
+
+    stats.emplace_back(path.filename().generic_string(), replaceCount);
+
+    std::ofstream file(path);
+    if (!file.is_open())
+        return;
+
+    file.write(fileText.c_str(), fileText.size());
+    file.close();
+}
+
+void Cleanup::CheckSameIncludes(std::filesystem::path const& path, ReplaceFilesStore& stats)
+{
+    std::string fileText = Warhead::File::GetFileText(path.generic_string());
+    std::string origText = fileText;
+    std::vector<std::string> _includes;
+    std::vector<std::string> _includesUniqueue;
+    std::unordered_map<std::string, std::string> _toReplace;
+    std::size_t replaceCount{ 0 };
+    bool isFirstInclude = false;
+    bool isFirst = false;
+    bool isEnd = false;
+
+    auto IsSameInclude = [&](std::string_view includeName)
+    {
+        for (auto const& itr : _includesUniqueue)
+            if (itr == includeName)
+                return true;
+
+        return false;
+    };
+
+    for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
+    {
+        auto found = str.find("#include");
+
+        if (!isEnd && found == std::string::npos)
+        {
+            isEnd = true;
+
+            if (_includes.empty() || _includes.size() == 1)
+                continue;
+
+            std::string unsortIncludes = "";
+            std::string sortIncludes = "";
+
+            for (auto const& itr : _includes)
+                unsortIncludes += itr + "\n";
+
+            // Add without same includes
+            for (auto const& itr : _includesUniqueue)
+                sortIncludes += itr + "\n";
+
+            // If uncludes same - no need replace
+            if (unsortIncludes == sortIncludes)
+                continue;
+
+            _toReplace.emplace(unsortIncludes, sortIncludes);
+
+            _includes.clear();
+            _includesUniqueue.clear();
+            replaceCount++;
+        }
+
+        if (found != std::string::npos)
+        {
+            if (isFirst)
+                isFirst = true;
+
+            if (isEnd)
+                isEnd = false;
+
+            _includes.emplace_back(str);
+
+            if (IsSameInclude(str))
+                LOG_WARN("> Same include '{}' - '{}'", str, path.generic_string());
+            else
+                _includesUniqueue.emplace_back(str);
+        }
+    }
+
+    if (_toReplace.empty())
+        return;
+
+    for (auto const& [unsortIncludes, sortIncludes] : _toReplace)
+        fileText = Warhead::String::ReplaceInPlace(fileText, unsortIncludes, sortIncludes);
+
+    if (fileText == origText)
+        return;
+
+    stats.emplace_back(path.filename().generic_string(), replaceCount);
+
+    std::ofstream file(path.c_str());
+    if (!file.is_open())
+        return;
+
+    file.write(fileText.c_str(), fileText.size());
+    file.close();
+}
+
+void Cleanup::CheckIncludesInFile()
+{
+    std::unordered_map<std::string, uint32> _includes;
+    std::multimap<uint32, std::string, std::greater<uint32>> sortIncludes;
+
+    for (auto const& filePath : _localeFileStorage)
+    {
+        std::string fileText = Warhead::File::GetFileText(filePath.generic_string());
+
+        bool isFirstInclude = false;
+        bool isFirst = false;
+        bool isEnd = false;
+
+        for (auto const& str : Warhead::Tokenize(fileText, '\n', true))
+        {
+            auto found = str.find("#include");
+
+            if (found != std::string::npos)
+            {
+                auto itr = _includes.find(std::string(str));
+                if (itr == _includes.end())
+                    _includes.emplace(str, 1);
+                else
+                    itr->second++;
+            }
+        }
+    }
+
+    uint32 count = 0;
+
+    for (auto const& [strInclude, countInclude] : _includes)
+        sortIncludes.emplace(countInclude, strInclude);
+
+    for (auto const& [countInclude, strInclude] : sortIncludes)
+    {
+        if (countInclude < 3)
+            continue;
+
+        count++;
+
+        LOG_INFO("{}. '{}' - {}", count, strInclude.c_str(), countInclude);
+    }
+}
