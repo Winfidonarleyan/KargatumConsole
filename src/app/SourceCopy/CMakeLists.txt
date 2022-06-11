@@ -10,11 +10,4 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 
-add_subdirectory(Cleanup)
-add_subdirectory(ClientCheck)
-add_subdirectory(Lab)
-add_subdirectory(Merger)
-add_subdirectory(ModuleCreator)
-add_subdirectory(PrTest)
-add_subdirectory(TestApp)
-add_subdirectory(SourceCopy)
+GenerateApp(${CMAKE_CURRENT_SOURCE_DIR} "SourceCopy")

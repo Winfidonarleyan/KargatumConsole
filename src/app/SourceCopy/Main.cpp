@@ -15,25 +15,20 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "CryptoHash.h"
-#include <Poco/DigestStream.h>
-#include <Poco/MD5Engine.h>
-#include <fstream>
+#include "Common.h"
+#include "CopyMgr.h"
+#include "Log.h"
+#include "GitRevision.h"
 
-std::string Warhead::Crypto::GetMD5HashFromFile(std::string const& filePath)
+int main()
 {
-    using Poco::DigestOutputStream;
-    using Poco::DigestEngine;
-    using Poco::MD5Engine;
+    LOG_INFO("> {}", GitRevision::GetFullVersion());
+    LOG_INFO("--");
 
-    std::ifstream in(filePath, std::ios_base::binary);
+    if (!sCopyMgr->Load())
+        return 1;
 
-    MD5Engine md5;
-    DigestOutputStream ostr(md5);
-    ostr << in.rdbuf();
-    ostr.flush(); // Ensure everything gets passed to the digest engine
+    sCopyMgr->SendBaseInfo();
 
-    const DigestEngine::Digest& digest = md5.digest(); // obtain result
-
-    return DigestEngine::digestToHex(digest);
+    return 0;
 }
