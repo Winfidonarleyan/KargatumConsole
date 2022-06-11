@@ -511,9 +511,7 @@ std::string ModuleCreator::GetHeadText(bool isWarhead /*= true*/, bool isSpecal 
 {
     std::string text;
 
-
-
-    if (!isSpecal)
+    if (!isWarhead && !isSpecal)
     {
         text += "/*\n";
         text += " * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information\n";
