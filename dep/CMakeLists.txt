@@ -12,6 +12,7 @@
 
 add_subdirectory(boost)
 add_subdirectory(fmt)
+add_subdirectory(indicators)
+add_subdirectory(json)
 add_subdirectory(openssl)
 add_subdirectory(poco)
-add_subdirectory(json)

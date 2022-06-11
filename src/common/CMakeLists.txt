@@ -36,11 +36,12 @@ target_link_libraries(common
   PRIVATE
     warhead-core-interface
   PUBLIC
+    Poco::Foundation
     boost
     fmt
-    openssl
+    indicators::indicators
     json
-    Poco::Foundation)
+    openssl)
 
 add_dependencies(common revision_data.h)
 
