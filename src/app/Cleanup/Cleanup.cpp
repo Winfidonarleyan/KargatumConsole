@@ -569,7 +569,7 @@ void Cleanup::ReplaceTabstoWhitespaceInFile(std::filesystem::path const& path, R
 {
     std::string text = Warhead::File::GetFileText(path.generic_string());
 
-    uint32 replaceCount = Warhead::String::PatternReplace(text, "(\\t)", " ");
+    uint32 replaceCount = Warhead::String::PatternReplace(text, "(\\t)", "    ");
     if (!replaceCount)
         return;
 
