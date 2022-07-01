@@ -16,159 +16,360 @@
  */
 
 #include "Log.h"
-#include "Poco/WindowsConsoleChannel.h"
+#include "Logger.h"
+#include "ConsoleChannel.h"
+#include "FileChannel.h"
+#include "Exception.h"
+#include "LogMessage.h"
+#include "Config.h"
 #include "Util.h"
-#include <Poco/AutoPtr.h>
-#include <Poco/Exception.h>
-#include <Poco/FormattingChannel.h>
-#include <Poco/Logger.h>
-#include <Poco/PatternFormatter.h>
-#include <Poco/SplitterChannel.h>
-#include <filesystem>
-#include <sstream>
-
-using namespace Poco;
+#include "StringConvert.h"
 
 namespace
 {
-    LogLevel highestLogLevel;
+    // Const loggers name
+    constexpr auto LOGGER_ROOT = "root";
+    constexpr auto LOGGER_GM = "commands.gm";
+    constexpr auto LOGGER_PLAYER_DUMP = "entities.player.dump";
+
+    // Prefix's
+    constexpr auto PREFIX_LOGGER = "Logger.";
+    constexpr auto PREFIX_CHANNEL = "LogChannel.";
+    constexpr auto PREFIX_LOGGER_LENGTH = 7;
+    constexpr auto PREFIX_CHANNEL_LENGTH = 11;
 }
 
-Log::Log()
+Warhead::Log::Log()
 {
-    Initialize();
+    RegisterChannel<ConsoleChannel>();
+    RegisterChannel<FileChannel>();
 }
 
-Log::~Log()
+Warhead::Log::~Log()
 {
     Clear();
 }
 
-Log* Log::instance()
+Warhead::Log* Warhead::Log::instance()
 {
     static Log instance;
     return &instance;
 }
 
-void Log::Clear()
+void Warhead::Log::Clear()
 {
-    // Clear all loggers
-    Logger::shutdown();
+    // Clear all loggers and channels
+    _loggers.clear();
+    _channels.clear();
 }
 
-void Log::Initialize()
+void Warhead::Log::Initialize()
 {
-    highestLogLevel = LOG_LEVEL_FATAL;
+    if (_isUseDefaultLogs)
+        return;
+
+    LoadFromConfig();
+}
+
+void Warhead::Log::LoadFromConfig()
+{
+    highestLogLevel = LogLevel::Fatal;
+
+    _logsDir = sConfigMgr->GetOption<std::string>("LogsDir", "", false);
+
+    if (!_logsDir.empty() && (_logsDir.at(_logsDir.length() - 1) != '/') && (_logsDir.at(_logsDir.length() - 1) != '\\'))
+        _logsDir.push_back('/');
 
     Clear();
-    InitSystemLogger();
+    //InitLogsDir();
+    ReadChannelsFromConfig();
+    ReadLoggersFromConfig();
 }
 
-void Log::InitSystemLogger()
+void Warhead::Log::ReadLoggersFromConfig()
 {
-    LogLevel level = LOG_LEVEL_DEBUG;
-
-    // Start console channel
-    AutoPtr<PatternFormatter> _ConsolePattern(new PatternFormatter);
-
-    try
+    auto const& keys = sConfigMgr->GetKeysByString(PREFIX_LOGGER);
+    if (keys.empty())
     {
-        _ConsolePattern->setProperty("pattern", "%H:%M:%S %t");
-        _ConsolePattern->setProperty("times", "local");
-    }
-    catch (const Poco::Exception& e)
-    {
-        fmt::print("Log::InitSystemLogger - {}\n", e.displayText().c_str());
+        fmt::print("Log::ReadLoggersFromConfig - Not found loggers, change config file!\n");
+        return;
     }
 
-    AutoPtr<WindowsColorConsoleChannel> _ConsoleChannel(new WindowsColorConsoleChannel);
+    for (auto const& loggerName : keys)
+        CreateLoggerFromConfig(loggerName);
 
-    try
-    {
-        _ConsoleChannel->setProperty("fatalColor", "lightRed");
-        _ConsoleChannel->setProperty("criticalColor", "lightRed");
-        _ConsoleChannel->setProperty("errorColor", "red");
-        _ConsoleChannel->setProperty("warningColor", "brown");
-        _ConsoleChannel->setProperty("noticeColor", "magenta");
-        _ConsoleChannel->setProperty("informationColor", "cyan");
-        _ConsoleChannel->setProperty("debugColor", "lightMagenta");
-        _ConsoleChannel->setProperty("traceColor", "green");
-    }
-    catch (const Poco::Exception& e)
-    {
-        fmt::print("Log::InitSystemLogger - {}\n", e.displayText().c_str());
-    }
-
-    try
-    {
-        Logger::create("system", new FormattingChannel(_ConsolePattern, _ConsoleChannel), level);
-    }
-    catch (const Poco::Exception& e)
-    {
-        fmt::print("Log::InitSystemLogger - {}\n", e.displayText().c_str());
-    }
-
-    highestLogLevel = level;
+    if (!HasLogger(LOGGER_ROOT))
+        fmt::print("Log::ReadLoggersFromConfig - Logger '{0}' not found!\nPlease change or add 'Logger.{0}' option in config file!\n", LOGGER_ROOT);
 }
 
-bool Log::ShouldLog(LogLevel const level) const
+void Warhead::Log::ReadChannelsFromConfig()
+{
+    auto const& keys = sConfigMgr->GetKeysByString(PREFIX_CHANNEL);
+    if (keys.empty())
+    {
+        fmt::print("Log::ReadChannelsFromConfig - Not found channels, change config file!\n");
+        return;
+    }
+
+    for (auto const& channelName : keys)
+        CreateChannelsFromConfig(channelName);
+}
+
+void Warhead::Log::CreateLoggerFromConfig(std::string_view configLoggerName)
+{
+    if (configLoggerName.empty())
+        return;
+
+    if (HasLogger(configLoggerName))
+    {
+        fmt::print("Log::CreateLoggerFromConfig: {} is exist\n", configLoggerName);
+        return;
+    }
+
+    LogLevel level = LogLevel::Fatal;
+
+    std::string const& options = sConfigMgr->GetOption<std::string>(std::string{ configLoggerName }, "");
+    auto loggerName = configLoggerName.substr(PREFIX_LOGGER_LENGTH);
+
+    if (options.empty())
+    {
+        fmt::print("Log::CreateLoggerFromConfig: Missing config option Logger.{}\n", loggerName);
+        return;
+    }
+
+    auto const& tokens = Warhead::Tokenize(options, ',', true);
+    if (tokens.size() != LOGGER_OPTIONS)
+    {
+        fmt::print("Log::CreateLoggerFromConfig: Bad config options for Logger ({})\n", loggerName);
+        return;
+    }
+
+    auto loggerLevel = Warhead::StringTo<uint8>(tokens[0]);
+    if (!loggerLevel || *loggerLevel >= MAX_LOG_LEVEL)
+    {
+        fmt::print("Log::CreateLoggerFromConfig: Wrong Log Level for logger {}\n", loggerName);
+        return;
+    }
+
+    level = static_cast<LogLevel>(*loggerLevel);
+
+    if (level > highestLogLevel)
+        highestLogLevel = level;
+
+    try
+    {
+        auto logger = std::make_unique<Logger>(loggerName, level);
+
+        for (std::string_view channelName : Warhead::Tokenize(tokens[1], ' ', false))
+        {
+            if (auto channel = HasChannel(channelName))
+            {
+                logger->AddChannel(channel);
+                continue;
+            }
+
+            fmt::print("Error while configuring Channel '{}' in Logger {}. Channel does not exist\n", channelName, loggerName);
+        }
+
+        _loggers.emplace(std::string{ loggerName }, std::move(logger));
+    }
+    catch (const Exception& e)
+    {
+        fmt::print("Log::CreateLoggerFromConfig: Error at create logger {}\n", e.GetErrorMessage());
+    }
+}
+
+void Warhead::Log::CreateChannelsFromConfig(std::string_view logChannelName)
+{
+    if (logChannelName.empty())
+        return;
+
+    if (HasChannel(logChannelName))
+    {
+        fmt::print("Log::CreateChannelsFromConfig: {} is exist\n", logChannelName);
+        return;
+    }
+
+    LogLevel level = LogLevel::Fatal;
+
+    std::string const& options = sConfigMgr->GetOption<std::string>(std::string{ logChannelName }, "");
+    auto channelName = logChannelName.substr(PREFIX_CHANNEL_LENGTH);
+
+    auto const& tokens = Warhead::Tokenize(options, ',', true);
+    if (tokens.size() < 3 || tokens.size() > MAX_CHANNEL_OPTIONS)
+    {
+        fmt::print("Log::CreateChannelsFromConfig: Wrong config option for {}\n", logChannelName);
+        return;
+    }
+
+    auto channelType = Warhead::StringTo<int8>(tokens[0]);
+    if (!channelType)
+    {
+        fmt::print("Log::CreateChannelsFromConfig: Wrong channel type for {}\n", logChannelName);
+        return;
+    }
+
+    auto const& createFunctionItr = _channelsCreateFunction.find(*channelType);
+    if (createFunctionItr == _channelsCreateFunction.end())
+    {
+        fmt::print(stderr, "Log::CreateChannelsFromConfig: Undefined type '{}' for {}\n", tokens[0], logChannelName);
+        return;
+    }
+
+    ChannelType type = static_cast<ChannelType>(*channelType);
+
+    auto loggerLevel = Warhead::StringTo<uint8>(tokens[1]);
+    if (!loggerLevel || *loggerLevel >= MAX_LOG_LEVEL)
+    {
+        fmt::print("Log::CreateChannelsFromConfig: Wrong Log Level for {}\n", logChannelName);
+        return;
+    }
+
+    level = static_cast<LogLevel>(*loggerLevel);
+
+    auto const& pattern = tokens[2];
+    if (pattern.empty())
+    {
+        fmt::print("Log::CreateChannelsFromConfig: Empty pattern for {}\n", logChannelName);
+        return;
+    }
+
+    try
+    {
+        _channels.emplace(std::string{ channelName }, createFunctionItr->second(logChannelName, level, pattern, tokens));
+    }
+    catch (const Exception& e)
+    {
+        fmt::print("Log::CreateChannelsFromConfig: Error at create channel {}\n", e.GetErrorMessage());
+    }
+}
+
+void Warhead::Log::UsingDefaultLogs(bool value /*= true*/)
+{
+    _isUseDefaultLogs = value;
+
+    if (!_isUseDefaultLogs)
+        return;
+
+    // Clear all before create default
+    Clear();
+
+    highestLogLevel = LogLevel::Debug;
+
+    try
+    {
+        auto consoleChannel = std::make_shared<ConsoleChannel>("Console", highestLogLevel, "[%H:%M:%S] %t", "lightRed lightRed red brown cyan lightMagenta green");
+        _channels.emplace("Console", consoleChannel);
+
+        auto rootLogger = std::make_unique<Logger>("root", highestLogLevel);
+        rootLogger->AddChannel(consoleChannel);
+        _loggers.emplace("root", std::move(rootLogger));
+    }
+    catch (const Exception& e)
+    {
+        fmt::print("Log::UsingDefaultLogs - {}\n", e.GetErrorMessage());
+    }
+}
+
+Warhead::Logger* Warhead::Log::GetLoggerByType(std::string_view type)
+{
+    if (auto logger = HasLogger(type))
+        return logger;
+
+    if (type == LOGGER_ROOT)
+        return nullptr;
+
+    std::string_view parentLogger{ LOGGER_ROOT };
+    size_t found = type.find_last_of('.');
+    if (found != std::string_view::npos)
+        parentLogger = type.substr(0, found);
+
+    return GetLoggerByType(parentLogger);
+}
+
+Warhead::Logger* Warhead::Log::HasLogger(std::string_view type)
+{
+    auto const& itr = _loggers.find(std::string{ type });
+    if (itr != _loggers.end())
+        return itr->second.get();
+
+    return nullptr;
+}
+
+std::shared_ptr<Warhead::Channel> Warhead::Log::HasChannel(std::string_view name)
+{
+    auto const& itr = _channels.find(std::string{ name });
+    if (itr != _channels.end())
+        return itr->second;
+
+    return nullptr;
+}
+
+bool Warhead::Log::ShouldLog(std::string_view filter, LogLevel const level)
 {
     // Don't even look for a logger if the LogLevel is higher than the highest log levels across all loggers
     if (level > highestLogLevel)
         return false;
 
-    Logger& logger = Logger::get("system");
+    auto const& logger = GetLoggerByType(filter);
+    if (!logger)
+        return false;
 
-    LogLevel logLevel = LogLevel(logger.getLevel());
-    return logLevel != LOG_LEVEL_DISABLED && logLevel >= level;
+    LogLevel logLevel = logger->GetLevel();
+    return logLevel != LogLevel::Disabled && logLevel >= level;
 }
 
-void Log::SetLogLevel(LogLevel const level)
+void Warhead::Log::_outMessage(std::string_view filter, LogLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view message)
 {
-    highestLogLevel = level;
-
-    Logger::get("system").setLevel(level);
+    Write(std::make_unique<LogMessage>(filter, message, level, file, line, function));
 }
 
-void Log::_outSys(LogLevel level, std::string_view message)
+void Warhead::Log::_outCommand(uint32 accountID, std::string_view message)
 {
-    Logger& logger = Logger::get("system");
+    Write(std::make_unique<LogMessage>(LOGGER_GM, message, LogLevel::Info, Warhead::ToString(accountID)));
+}
 
-    try
+void Warhead::Log::Write(std::unique_ptr<LogMessage>&& msg)
+{
+    if (auto const& logger = GetLoggerByType(msg->GetSource()))
     {
-        switch (level)
+        try
         {
-        case LOG_LEVEL_FATAL:
-            logger.fatal(message.data());
-            break;
-        case LOG_LEVEL_CRITICAL:
-            logger.critical(message.data());
-            break;
-        case LOG_LEVEL_ERROR:
-            logger.error(message.data());
-            break;
-        case LOG_LEVEL_WARNING:
-            logger.warning(message.data());
-            break;
-        case LOG_LEVEL_NOTICE:
-            logger.notice(message.data());
-            break;
-        case LOG_LEVEL_INFO:
-            //logger.information(fmt::format(message));
-            logger.information(std::string(message));
-            break;
-        case LOG_LEVEL_DEBUG:
-            logger.debug(message.data());
-            break;
-        case LOG_LEVEL_TRACE:
-            logger.trace(message.data());
-            break;
-        default:
-            break;
+            logger->Write(*msg);
+        }
+        catch (const Exception& e)
+        {
+            fmt::print("Error at write: {}", e.GetErrorMessage());
         }
     }
-    catch (const Poco::Exception& e)
-    {
-        fmt::print("Log::outSys - {}\n", e.displayText());
-    }
+}
+
+void Warhead::Log::RegisterChannel(ChannelType type, ChannelCreateFn channelCreateFn)
+{
+    ASSERT(type < ChannelType::Max);
+
+    auto const& itr = _channelsCreateFunction.find(static_cast<uint8>(type));
+    ASSERT(itr == _channelsCreateFunction.end());
+    _channelsCreateFunction.emplace(static_cast<uint8>(type), channelCreateFn);
+}
+
+void Warhead::Log::SetLoggerLevel(std::string_view name, LogLevel const level)
+{
+    if (level >= LogLevel::Max)
+        return;
+
+    if (level > highestLogLevel)
+        highestLogLevel = level;
+
+    if (auto const& logger = HasLogger(name))
+        logger->SetLevel(level);
+}
+
+void Warhead::Log::SetChannelLevel(std::string_view name, LogLevel const level)
+{
+    if (level >= LogLevel::Max)
+        return;
+
+    if (auto const& channel = HasChannel(name))
+        channel->SetLevel(level);
 }

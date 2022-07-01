@@ -18,111 +18,150 @@
 #ifndef _LOG_H
 #define _LOG_H
 
-#include "Common.h"
-#include "StringFormat.h"
-#include <fmt/color.h>
+#include "Define.h"
+#include "LogCommon.h"
+#include <unordered_map>
+#include <fmt/format.h>
 
-enum LogLevel
+namespace Warhead
 {
-    LOG_LEVEL_DISABLED,
-    LOG_LEVEL_FATAL,
-    LOG_LEVEL_CRITICAL,
-    LOG_LEVEL_ERROR,
-    LOG_LEVEL_WARNING,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_TRACE,
+    class Logger;
+    class Channel;
+    class LogMessage;
 
-    LOG_LEVEL_MAX
-};
+    typedef std::shared_ptr<Channel>(*ChannelCreateFn)(std::string_view, LogLevel, std::string_view, std::vector<std::string_view> const&);
 
-class WH_COMMON_API Log
-{
-private:
-    Log();
-    ~Log();
-    Log(Log const&) = delete;
-    Log(Log&&) = delete;
-    Log& operator=(Log const&) = delete;
-    Log& operator=(Log&&) = delete;
-
-public:
-    static Log* instance();
-
-    void SetLogLevel(LogLevel const level);
-    bool ShouldLog(LogLevel const level) const;
-
-    template<typename... Args>
-    inline void outSys(LogLevel const level, std::string_view fmt, Args&& ... args)
+    template <class ChannelImpl>
+    inline std::shared_ptr<Channel> CreateChannel(std::string_view name, LogLevel level, std::string_view pattern, std::vector<std::string_view> const& options)
     {
-        _outSys(level, fmt::format(fmt, std::forward<Args>(args)...));
+        return std::make_shared<ChannelImpl>(name, level, pattern, options);
     }
 
-private:
-    void _outSys(LogLevel level, std::string_view message);
+    class WH_COMMON_API Log
+    {
+    private:
+        Log();
+        ~Log();
+        Log(Log const&) = delete;
+        Log(Log&&) = delete;
+        Log& operator=(Log const&) = delete;
+        Log& operator=(Log&&) = delete;
 
-    void Initialize();
-    void InitSystemLogger();
-    void Clear();
-};
+    public:
+        static Log* instance();
 
-#define sLog Log::instance()
+        void Initialize();
+        void LoadFromConfig();
 
-#define LOG_EXCEPTION_FREE(level__, ...) \
+        void SetLoggerLevel(std::string_view name, LogLevel const level);
+        void SetChannelLevel(std::string_view name, LogLevel const level);
+        bool ShouldLog(std::string_view filter, LogLevel const level);
+
+        template<typename... Args>
+        inline void outMessage(std::string_view filter, LogLevel const level, std::string_view file, std::size_t line, std::string_view function, std::string_view fmt, Args&&... args)
+        {
+            _outMessage(filter, level, file, line, function, fmt::format(fmt, std::forward<Args>(args)...));
+        }
+
+        template<typename... Args>
+        inline void outCommand(uint32 account, std::string_view fmt, Args&&... args)
+        {
+            if (!ShouldLog("commands.gm", LogLevel::Info))
+                return;
+
+            _outCommand(account, fmt::format(fmt, std::forward<Args>(args)...));
+        }
+
+        template<class ChannelImpl>
+        void RegisterChannel()
+        {
+            RegisterChannel(ChannelImpl::ThisChannelType, CreateChannel<ChannelImpl>);
+        }
+
+        inline std::string_view GetLogsDir() { return _logsDir; }
+
+        void UsingDefaultLogs(bool value = true);
+
+    private:
+        void _outMessage(std::string_view filter, LogLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view message);
+        void _outCommand(uint32 accountID, std::string_view message);
+        void Write(std::unique_ptr<LogMessage>&& msg);
+
+        void CreateLoggerFromConfig(std::string_view configLoggerName);
+        void CreateChannelsFromConfig(std::string_view logChannelName);
+        void ReadLoggersFromConfig();
+        void ReadChannelsFromConfig();
+
+        void Clear();
+
+        void RegisterChannel(ChannelType type, ChannelCreateFn channelCreateFn);
+
+        Logger* GetLoggerByType(std::string_view type);
+        Logger* HasLogger(std::string_view type);
+        std::shared_ptr<Channel> HasChannel(std::string_view name);
+
+        std::unordered_map<std::string, std::unique_ptr<Logger>> _loggers;
+        std::unordered_map<std::string, std::shared_ptr<Channel>> _channels;
+        std::unordered_map<int8, ChannelCreateFn> _channelsCreateFunction;
+
+        LogLevel highestLogLevel;
+        std::string _logsDir;
+
+        //
+        bool _isUseDefaultLogs{ false };
+    };
+}
+
+#define sLog Warhead::Log::instance()
+
+#define LOG_EXCEPTION_FREE(filterType__, level__, ...) \
     { \
         try \
         { \
-            sLog->outSys(level__, fmt::format(__VA_ARGS__)); \
+            sLog->outMessage(filterType__, level__, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); \
         } \
         catch (const std::exception& e) \
         { \
-            sLog->outSys(LOG_LEVEL_ERROR, "Wrong format occurred ({}) at '{}:{}'", \
+            sLog->outMessage("server", Warhead::LogLevel::Error, __FILE__, __LINE__, __FUNCTION__, "Wrong format occurred ({}) at '{}:{}'", \
                 e.what(), __FILE__, __LINE__); \
         } \
     }
 
-#define LOG_MSG_BODY(level__, ...)                            \
-        do {                                                  \
-            if (sLog->ShouldLog(level__))                     \
-                LOG_EXCEPTION_FREE(level__, __VA_ARGS__); \
+#define LOG_MSG_BODY(filterType__, level__, ...)                        \
+        do {                                                            \
+            if (sLog->ShouldLog(filterType__, level__))                 \
+                LOG_EXCEPTION_FREE(filterType__, level__, __VA_ARGS__); \
         } while (0)
 
 // Fatal - 1
-#define LOG_FATAL(...) \
-    LOG_MSG_BODY(LOG_LEVEL_FATAL, __VA_ARGS__)
+#define LOG_FATAL(filterType__, ...) \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Fatal, __VA_ARGS__)
 
 // Critical - 2
-#define LOG_CRIT(...) \
-    LOG_MSG_BODY(LOG_LEVEL_CRITICAL, __VA_ARGS__)
+#define LOG_CRIT(filterType__, ...) \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Critical, __VA_ARGS__)
 
 // Error - 3
-#define LOG_ERROR(...) \
-    LOG_MSG_BODY(LOG_LEVEL_ERROR, __VA_ARGS__)
+#define LOG_ERROR(filterType__, ...) \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Error, __VA_ARGS__)
 
 // Warning - 4
-#define LOG_WARN(...)  \
-    LOG_MSG_BODY(LOG_LEVEL_WARNING, __VA_ARGS__)
+#define LOG_WARN(filterType__, ...)  \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Warning, __VA_ARGS__)
 
-// Notice - 5
-#define LOG_NOTICE(...)  \
-    LOG_MSG_BODY(LOG_LEVEL_NOTICE, __VA_ARGS__)
+// Info - 5
+#define LOG_INFO(filterType__, ...)  \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Info, __VA_ARGS__)
 
-// Info - 6
-#define LOG_INFO(...)  \
-    LOG_MSG_BODY(LOG_LEVEL_INFO, __VA_ARGS__)
+// Debug - 6
+#define LOG_DEBUG(filterType__, ...) \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Debug, __VA_ARGS__)
 
-// Debug - 7
-#define LOG_DEBUG(...) \
-    LOG_MSG_BODY(LOG_LEVEL_DEBUG, __VA_ARGS__)
+// Trace - 7
+#define LOG_TRACE(filterType__, ...) \
+    LOG_MSG_BODY(filterType__, Warhead::LogLevel::Trace, __VA_ARGS__)
 
-// Trace - 8
-#define LOG_TRACE(...) \
-    LOG_MSG_BODY(LOG_LEVEL_TRACE, __VA_ARGS__)
+#define LOG_GM(accountId__, ...) \
+    sLog->outCommand(accountId__, __VA_ARGS__)
 
-#define FMT_LOG_ERROR(...) \
-    fmt::print(fmt::emphasis::bold | fg(fmt::color::red), "{} '{}:{}'\n", fmt::format(__VA_ARGS__), __FILE__, __LINE__);
-
-#define FMT_LOG_INFO(...) \
-    fmt::print(fmt::emphasis::bold | fg(fmt::color::dark_cyan), "{} '{}:{}'\n", fmt::format(__VA_ARGS__), __FILE__, __LINE__);
 #endif
