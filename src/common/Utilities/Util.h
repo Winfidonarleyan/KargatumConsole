@@ -38,6 +38,9 @@ namespace Warhead
 
 WH_COMMON_API bool StringEqualI(std::string_view str1, std::string_view str2);
 
+// UTF8 handling
+WH_COMMON_API bool Utf8toWStr(std::string_view utf8str, std::wstring& wstr);
+
 namespace Warhead::File
 {
     WH_COMMON_API std::string GetFileText(std::string const& path, bool openBinary = false);

@@ -22,6 +22,7 @@
 #include <Poco/File.h>
 #include <filesystem>
 #include <fstream>
+#include <utf8.h>
 
 std::vector<std::string_view> Warhead::Tokenize(std::string_view str, char sep, bool keepEmpty)
 {
@@ -186,4 +187,21 @@ void Warhead::Impl::HexStrToByteArray(std::string const& str, uint8* out, size_t
         char buffer[3] = { str[i], str[i + 1], '\0' };
         out[j++] = uint8(strtoul(buffer, nullptr, 16));
     }
+}
+
+bool Utf8toWStr(std::string_view utf8str, std::wstring& wstr)
+{
+    wstr.clear();
+
+    try
+    {
+        utf8::utf8to16(utf8str.begin(), utf8str.end(), std::back_inserter(wstr));
+    }
+    catch (std::exception const&)
+    {
+        wstr.clear();
+        return false;
+    }
+
+    return true;
 }

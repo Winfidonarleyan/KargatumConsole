@@ -41,7 +41,8 @@ target_link_libraries(common
     fmt
     indicators::indicators
     json
-    openssl)
+    openssl
+    utf8cpp)
 
 add_dependencies(common revision_data.h)
 
