@@ -91,7 +91,7 @@ namespace
         auto const& itr = filesSize.find(fileName);
         if (itr == filesSize.end())
         {
-            LOG_FATAL("> File '{}' not found!", fileName.c_str());
+            LOG_FATAL("cleanup", "> File '{}' not found!", fileName.c_str());
             return false;
         }
 
@@ -103,7 +103,7 @@ namespace
         auto const& itr = filesSizeCustom.find(fileName);
         if (itr == filesSizeCustom.end())
         {
-            LOG_FATAL("> File '{}' not found!", fileName.c_str());
+            LOG_FATAL("cleanup", "> File '{}' not found!", fileName.c_str());
             return false;
         }
 
@@ -115,7 +115,7 @@ namespace
         auto const& itr = filesHash.find(fileName);
         if (itr == filesHash.end())
         {
-            LOG_FATAL("> File '{}' not found!", fileName.c_str());
+            LOG_FATAL("cleanup", "> File '{}' not found!", fileName.c_str());
             return false;
         }
 
@@ -235,24 +235,24 @@ namespace
 
             if (!IsSameFileSize(fileName, fileSize))
             {
-                LOG_INFO("> File '{}' - Modifed", fileName.c_str());
+                LOG_INFO("cleanup", "> File '{}' - Modifed", fileName.c_str());
                 count++;
             }
 
             /*if (fileSize > 100000000)
-                LOG_INFO("> File '{}' - {}", fileName.c_str(),  ? "Correct" : "Incorrect");
+                LOG_INFO("cleanup", "> File '{}' - {}", fileName.c_str(),  ? "Correct" : "Incorrect");
             else
             {
                 auto const& hash = Warhead::Crypto::GetMD5HashFromFile(path);
 
-                LOG_INFO("> File '{}' - {}", fileName.c_str(), IsSameFileHash(fileName, hash) ? "Correct" : "Incorrect");
+                LOG_INFO("cleanup", "> File '{}' - {}", fileName.c_str(), IsSameFileHash(fileName, hash) ? "Correct" : "Incorrect");
             }*/
         }
 
         if (!count)
-            LOG_INFO("> Very good, all based files correct!");
+            LOG_INFO("cleanup", "> Very good, all based files correct!");
 
-        LOG_INFO("");
+        LOG_INFO("cleanup", "");
     }
 
     void CheckNonDefaultFiles()
@@ -262,7 +262,7 @@ namespace
         GetNonDefaultFiles(listFiles);
 
         if (listFiles.empty())
-            LOG_INFO("> Not found custom files, very good");
+            LOG_INFO("cleanup", "> Not found custom files, very good");
 
         for (auto const& path : listFiles)
         {
@@ -270,12 +270,12 @@ namespace
             auto const& fileSize = Warhead::File::GetFileSize(path);
 
             if (IsAppliedClientFile(fileName))
-                LOG_INFO("> Custom file '{}' - '{}' using by client", fileName.c_str(), fileSize);
+                LOG_INFO("cleanup", "> Custom file '{}' - '{}' using by client", fileName.c_str(), fileSize);
             else
-                LOG_INFO("> Custom file '{}' - '{}' useless. Client not used this file, need delete'", fileName.c_str(), fileSize);
+                LOG_INFO("cleanup", "> Custom file '{}' - '{}' useless. Client not used this file, need delete'", fileName.c_str(), fileSize);
         }
 
-        LOG_INFO("");
+        LOG_INFO("cleanup", "");
     }
 
     void CheckWowkaDefaultFiles()
@@ -285,7 +285,7 @@ namespace
         GetNonDefaultFiles(listFiles);
 
         if (listFiles.empty())
-            LOG_INFO("> Not found custom files, hmm, clean client?");
+            LOG_INFO("cleanup", "> Not found custom files, hmm, clean client?");
 
         uint32 count = 0;
 
@@ -296,15 +296,15 @@ namespace
 
             if (!IsSameWowkaFileSize(fileName, fileSize))
             {
-                LOG_INFO("> File '{}' - Modifed or old", fileName.c_str());
+                LOG_INFO("cleanup", "> File '{}' - Modifed or old", fileName.c_str());
                 count++;
             }
         }
 
         if (!count)
-            LOG_INFO("> Very good, all Wowka.su files correct!");
+            LOG_INFO("cleanup", "> Very good, all Wowka.su files correct!");
 
-        LOG_INFO("");
+        LOG_INFO("cleanup", "");
     }
 }
 
@@ -316,24 +316,24 @@ ClientCheck* ClientCheck::instance()
 
 void ClientCheck::Start()
 {
-    LOG_INFO("> Using path '{}'", currPath.absolute().toString().c_str());
+    LOG_INFO("cleanup", "> Using path '{}'", currPath.absolute().toString().c_str());
 
     if (!IsNormalDirectory())
     {
-        LOG_FATAL("> File 'Wow.exe' not found. Directory incorrect");
+        LOG_FATAL("cleanup", "> File 'Wow.exe' not found. Directory incorrect");
         system("pause");
         return;
     }
 
-    LOG_INFO("");
+    LOG_INFO("cleanup", "");
 
-    LOG_INFO(">>> Check custom files...");
+    LOG_INFO("cleanup", ">>> Check custom files...");
     CheckNonDefaultFiles();
 
-    LOG_INFO(">>> Check default files...");
+    LOG_INFO("cleanup", ">>> Check default files...");
     CheckDefaultFiles();
 
-    LOG_INFO(">>> Check Wowka.su files...");
+    LOG_INFO("cleanup", ">>> Check Wowka.su files...");
     CheckWowkaDefaultFiles();
 
     system("pause");

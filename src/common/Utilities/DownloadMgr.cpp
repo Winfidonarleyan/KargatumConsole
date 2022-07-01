@@ -233,7 +233,7 @@ bool DownloadMgr::FinishDownloadFile(std::string const& host, std::string const&
     auto contentLength = _responce->content_length();
     if (!contentLength)
     {
-        LOG_ERROR("Not found content lenght in responce");
+        LOG_ERROR("download", "Not found content lenght in responce");
         return false;
     }
 
@@ -253,7 +253,7 @@ bool DownloadMgr::DownloadFile(std::string const& host, std::string const& port,
     auto contentLength = _responce->content_length();
     if (!contentLength)
     {
-        LOG_ERROR("Not found content lenght in responce");
+        LOG_ERROR("download", "Not found content lenght in responce");
         return false;
     }
 
@@ -261,7 +261,7 @@ bool DownloadMgr::DownloadFile(std::string const& host, std::string const& port,
 
     std::size_t contentSize = contentLength.value();
 
-    LOG_INFO("ContentSize: {} bytes", contentSize);
+    LOG_INFO("download", "ContentSize: {} bytes", contentSize);
 
     auto const& fileName = pathToSave.filename().generic_string();
 
@@ -288,7 +288,7 @@ bool DownloadMgr::DownloadFile(std::string const& host, std::string const& port,
         }
 
         if (!acceptRanges)
-            LOG_WARN("This file don't support accept ranges. Start download again");
+            LOG_WARN("download", "This file don't support accept ranges. Start download again");
         else
         {
             Shutdown();

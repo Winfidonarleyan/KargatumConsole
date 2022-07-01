@@ -21,14 +21,9 @@
 #include "StringConvert.h"
 #include <iostream>
 
-void Load()
-{
-    sLog->SetLogLevel(LOG_LEVEL_DEBUG);
-}
-
 int main()
 {
-    Load();
+    sLog->UsingDefaultLogs();
 
     /*while (true)
     {

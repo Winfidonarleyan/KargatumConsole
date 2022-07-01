@@ -36,7 +36,9 @@ inline auto GetTimeDiff(SystemTimePoint timePoint)
 
 int main()
 {
-    LOG_INFO("> Start");
+    sLog->UsingDefaultLogs();
+
+    LOG_INFO("test", "> Start");
 
     return 0;
 }

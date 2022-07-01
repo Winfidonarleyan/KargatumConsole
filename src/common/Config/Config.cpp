@@ -49,7 +49,8 @@ namespace
     template<typename Format, typename... Args>
     inline void PrintError(std::string_view filename, Format&& fmt, Args&& ... args)
     {
-        FMT_LOG_ERROR(Warhead::StringFormat(fmt, std::forward<Args>(args)...));
+        fmt::print(fmt, std::forward<Args>(args)...);
+        fmt::print("\n");
     }
 
     void AddKey(std::string const& optionName, std::string const& optionKey, bool replace = true)
@@ -59,7 +60,7 @@ namespace
         {
             if (!replace)
             {
-                LOG_ERROR("> Config: Option '{}' is exist! Option key - '{}'", optionName.c_str(), itr->second.c_str());
+                LOG_ERROR("config", "> Config: Option '{}' is exist! Option key - '{}'", optionName, itr->second);
                 return;
             }
 

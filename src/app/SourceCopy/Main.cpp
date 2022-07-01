@@ -22,8 +22,10 @@
 
 int main()
 {
-    LOG_INFO("> {}", GitRevision::GetFullVersion());
-    LOG_INFO("--");
+    sLog->UsingDefaultLogs();
+
+    LOG_INFO("copy", "> {}", GitRevision::GetFullVersion());
+    LOG_INFO("copy", "--");
 
     if (!sCopyMgr->Load())
         return 1;

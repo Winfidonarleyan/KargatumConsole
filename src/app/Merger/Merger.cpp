@@ -89,12 +89,12 @@ namespace
         if (origText == text)
             return;
 
-        LOG_INFO("{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), ReplaceLines);
+        LOG_INFO("merger", "{}. '{}'. Replace ({})", filesReplaceCount, path.filename().generic_string().c_str(), ReplaceLines);
 
         std::ofstream file(path);
         if (!file.is_open())
         {
-            LOG_FATAL("Failed open file \"{}\"!", path.generic_string().c_str());
+            LOG_FATAL("merger", "Failed open file \"{}\"!", path.generic_string().c_str());
             return;
         }
 
@@ -106,16 +106,16 @@ namespace
 
     void GetStats(uint32 startTimeMS)
     {
-        LOG_INFO("");
-        LOG_INFO("> Merger: ended correct for '{}'", _path.generic_string().c_str());
-        LOG_INFO("# -- Found files ({})", filesFoundCount);
-        LOG_INFO("# -- Replace files ({})", filesReplaceCount);
+        LOG_INFO("merger", "");
+        LOG_INFO("merger", "> Merger: ended correct for '{}'", _path.generic_string().c_str());
+        LOG_INFO("merger", "# -- Found files ({})", filesFoundCount);
+        LOG_INFO("merger", "# -- Replace files ({})", filesReplaceCount);
 
         if (ReplaceLines)
-            LOG_INFO("# -- Replace lines ({})", ReplaceLines);
+            LOG_INFO("merger", "# -- Replace lines ({})", ReplaceLines);
 
-        //LOG_INFO("# -- Used time '{}'", Warhead::Time::ToTimeString(GetMSTimeDiffToNow(startTimeMS)));
-        LOG_INFO("");
+        //LOG_INFO("merger", "# -- Used time '{}'", Warhead::Time::ToTimeString(GetMSTimeDiffToNow(startTimeMS)));
+        LOG_INFO("merger", "");
     }
 
     void GetListFiles(std::initializer_list<std::string> supportExtensions)
@@ -129,7 +129,7 @@ namespace
 
         FillFileList(_path);
 
-        LOG_INFO("> Merger: Found '{}' files", filesFoundCount);
+        LOG_INFO("merger", "> Merger: Found '{}' files", filesFoundCount);
     }
 }
 
@@ -157,8 +157,8 @@ void Merger::Init()
 
     auto Replace = [&]()
     {
-        LOG_INFO("");
-        LOG_INFO("> Merger: Start replace...");
+        LOG_INFO("merger", "");
+        LOG_INFO("merger", "> Merger: Start replace...");
 
         filesReplaceCount = 0;
         ReplaceLines = 0;
@@ -166,11 +166,11 @@ void Merger::Init()
         for (auto const& filePath : _localeFileStorage)
             CorrectText(filePath);
 
-        LOG_INFO("> Merger: Replace files ({})", filesReplaceCount);
-        LOG_INFO("> Merger: Replace lines ({})", ReplaceLines);
+        LOG_INFO("merger", "> Merger: Replace files ({})", filesReplaceCount);
+        LOG_INFO("merger", "> Merger: Replace lines ({})", ReplaceLines);
     };
 
-    LOG_INFO("> Start merge correct? [yes (default) / no]");
+    LOG_INFO("merger", "> Start merge correct? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -180,7 +180,7 @@ void Merger::Init()
 
     uint32 ms = getMSTime();
 
-    LOG_INFO("> Merger: Start correct for '{}'", _path.generic_string().c_str());
+    LOG_INFO("merger", "> Merger: Start correct for '{}'", _path.generic_string().c_str());
 
     // License
     AddReplaceStore("AzerothCore", "WarheadCore");
@@ -244,11 +244,11 @@ bool Merger::SetPath(std::string const& path)
 
     if (!fs::is_directory(path))
     {
-        LOG_FATAL("> Cleanup: Path '{}' in not directory!", path.c_str());
+        LOG_FATAL("merger", "> Cleanup: Path '{}' in not directory!", path.c_str());
         return false;
     }
 
-    LOG_INFO("> Cleanup: Added path '{}'", path.c_str());
+    LOG_INFO("merger", "> Cleanup: Added path '{}'", path.c_str());
 
     _path = fs::path(path);
 
@@ -287,7 +287,7 @@ void Merger::SendPathInfo()
 
         if (selectOption == 8)
         {
-            LOG_INFO("-- Enter path:");
+            LOG_INFO("merger", "-- Enter path:");
             std::getline(std::cin, selectPath);
         }
         else
@@ -303,16 +303,16 @@ void Merger::SendPathInfo()
     std::string pathInfo = GetPath();
     if (pathInfo.empty())
     {
-        LOG_FATAL(">> Path is empty! Please enter path.");
+        LOG_FATAL("merger", ">> Path is empty! Please enter path.");
 
         for (auto const& [index, _path] : _pathList)
         {
-            LOG_INFO("{}. '{}'", index, _path.c_str());
+            LOG_INFO("merger", "{}. '{}'", index, _path.c_str());
         }
 
-        LOG_INFO("# --");
-        LOG_INFO("8. Enter path manually");
-        LOG_INFO("> Select:");
+        LOG_INFO("merger", "# --");
+        LOG_INFO("merger", "8. Enter path manually");
+        LOG_INFO("merger", "> Select:");
 
         std::string selPathEnter;
         std::getline(std::cin, selPathEnter);
@@ -323,7 +323,7 @@ void Merger::SendPathInfo()
             SendPathInfo();
     }
     else
-        LOG_INFO(">> Entered path '{}'", pathInfo.c_str());
+        LOG_INFO("merger", ">> Entered path '{}'", pathInfo.c_str());
 
     if (!IsCorrectPath())
         SendPathInfo();
@@ -335,11 +335,11 @@ void Merger::LoadPathInfo()
 
     if (!sConfigMgr->LoadAppConfigs())
     {
-        LOG_FATAL("> Config not loaded!");
+        LOG_FATAL("merger", "> Config not loaded!");
         return;
     }
 
-    LOG_INFO(">> Loading path list...");
+    LOG_INFO("merger", ">> Loading path list...");
 
     _pathList.clear();
 
@@ -349,11 +349,11 @@ void Merger::LoadPathInfo()
 
     for (auto const& itr : tokens)
     {
-        LOG_DEBUG("> Added path '{}'. Index {}", std::string(itr).c_str(), index);
+        LOG_DEBUG("merger", "> Added path '{}'. Index {}", std::string(itr).c_str(), index);
         _pathList.emplace(index, itr);
         index++;
     }
 
-    LOG_INFO("> Loaded {} paths", _pathList.size());
-    LOG_INFO("--");
+    LOG_INFO("merger", "> Loaded {} paths", _pathList.size());
+    LOG_INFO("merger", "--");
 }

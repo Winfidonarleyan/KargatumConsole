@@ -15,27 +15,24 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "Cleanup.h"
 #include "GitRevision.h"
 #include "Log.h"
 #include "StringConvert.h"
 #include <iostream>
-#include <tuple>
-#include <memory>
 
 void SelectCleanup()
 {
-    LOG_INFO("# -- Select cleanup method:");
-    LOG_INFO("# 1. Remove whitespace");
-    LOG_INFO("# 2. Replace tabs");
-    LOG_INFO("# 3. Sort includes");
-    LOG_INFO("# 4. Same includes");
-    LOG_INFO("# 5. Check using includes");
-    LOG_INFO("# --");
-    LOG_INFO("# 99. Exit");
-    LOG_INFO("# --");
-    LOG_INFO("> Select:");
+    LOG_INFO("cleanup", "# -- Select cleanup method:");
+    LOG_INFO("cleanup", "# 1. Remove whitespace");
+    LOG_INFO("cleanup", "# 2. Replace tabs");
+    LOG_INFO("cleanup", "# 3. Sort includes");
+    LOG_INFO("cleanup", "# 4. Same includes");
+    LOG_INFO("cleanup", "# 5. Check using includes");
+    LOG_INFO("cleanup", "# --");
+    LOG_INFO("cleanup", "# 99. Exit");
+    LOG_INFO("cleanup", "# --");
+    LOG_INFO("cleanup", "> Select:");
 
     std::string selOptionCleanup;
     std::getline(std::cin, selOptionCleanup);
@@ -70,8 +67,10 @@ void SelectCleanup()
 
 int main()
 {
-    LOG_INFO("> {}", GitRevision::GetFullVersion());
-    LOG_INFO("--");
+    sLog->UsingDefaultLogs();
+
+    LOG_INFO("cleanup", "> {}", GitRevision::GetFullVersion());
+    LOG_INFO("cleanup", "--");
 
     sClean->LoadPathInfo();
 

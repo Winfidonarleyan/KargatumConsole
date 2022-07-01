@@ -55,23 +55,23 @@ void LoadPathInfo()
 
     if (!sConfigMgr->LoadAppConfigs())
     {
-        LOG_FATAL("> Config not loaded!");
+        LOG_FATAL("pr", "> Config not loaded!");
         return;
     }
 
-    LOG_INFO(">> Loading path to repo...");
+    LOG_INFO("pr", ">> Loading path to repo...");
 
     _configPath = fs::path(sConfigMgr->GetOption<std::string>("PrTest.Path", ""));
 
     if (!IsCorrectPath(_configPath.generic_string()))
     {
-        LOG_ERROR("> Path ({}) is incorrect!", _configPath.generic_string());
+        LOG_ERROR("pr", "> Path ({}) is incorrect!", _configPath.generic_string());
         _configPath.clear();
         return;
     }
 
-    LOG_DEBUG("> Added path '{}'", _configPath.generic_string());
-    LOG_INFO("--");
+    LOG_DEBUG("pr", "> Added path '{}'", _configPath.generic_string());
+    LOG_INFO("pr", "--");
 }
 
 bool SetPath(std::string const& path)
@@ -80,11 +80,11 @@ bool SetPath(std::string const& path)
 
     if (!IsCorrectPath(path))
     {
-        LOG_FATAL("> PR test: Path '{}' is not directory!", path);
+        LOG_FATAL("pr", "> PR test: Path '{}' is not directory!", path);
         return false;
     }
 
-    LOG_INFO("> PR test: Added path '{}'", path);
+    LOG_INFO("pr", "> PR test: Added path '{}'", path);
 
     _path = fs::path(path);
 
@@ -99,7 +99,7 @@ void SendPathInfo()
 
         if (selectOption == 1)
         {
-            LOG_INFO("-- Enter path:");
+            LOG_INFO("pr", "-- Enter path:");
             std::getline(std::cin, selectPath);
         }
         else if (selectOption == 2)
@@ -111,13 +111,13 @@ void SendPathInfo()
     std::string pathInfo = _path.generic_string();
     if (pathInfo.empty())
     {
-        LOG_FATAL(">> Path is empty! Please select or enter path to AC repo.");
-        LOG_INFO("1. Enter path manually");
+        LOG_FATAL("pr", ">> Path is empty! Please select or enter path to AC repo.");
+        LOG_INFO("pr", "1. Enter path manually");
 
         if (!_configPath.empty())
-            LOG_INFO("2. Set {}", _configPath.generic_string());
+            LOG_INFO("pr", "2. Set {}", _configPath.generic_string());
         
-        LOG_INFO("> Select:");
+        LOG_INFO("pr", "> Select:");
 
         std::string selPathEnter;
         std::getline(std::cin, selPathEnter);
@@ -128,7 +128,7 @@ void SendPathInfo()
             SendPathInfo();
     }
     else
-        LOG_INFO(">> Entered path '{}'", pathInfo.c_str());
+        LOG_INFO("pr", ">> Entered path '{}'", pathInfo.c_str());
 
     if (!IsCorrectPath(_path.generic_string()))
         SendPathInfo();
@@ -142,7 +142,7 @@ void TestPR()
     if (!IsCorrectConfig())
         return;
 
-    LOG_INFO("> Start chechout pr? [yes (default) / no]");
+    LOG_INFO("pr", "> Start chechout pr? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -153,22 +153,22 @@ void TestPR()
     system("cls");
 
     // Start
-    LOG_INFO("> Enter PR ID:");
+    LOG_INFO("pr", "> Enter PR ID:");
     std::getline(std::cin, select);
 
     std::string branchName = "pr-" + select;
 
-    LOG_INFO("-- Options:");
-    LOG_INFO("> 1. Upstream - ({})", upstreamName);
-    LOG_INFO("> 2. Path to AC repo - ({})", _path.generic_string());
-    LOG_INFO("> 3. PR number - ({})", select);
-    LOG_INFO("--");
+    LOG_INFO("pr", "-- Options:");
+    LOG_INFO("pr", "> 1. Upstream - ({})", upstreamName);
+    LOG_INFO("pr", "> 2. Path to AC repo - ({})", _path.generic_string());
+    LOG_INFO("pr", "> 3. PR number - ({})", select);
+    LOG_INFO("pr", "--");
 
-    LOG_INFO("> Start Checkout AC PR");
+    LOG_INFO("pr", "> Start Checkout AC PR");
 
     if (Warhead::Process::Git::IsExistBranch(_path.generic_string(), branchName))
     {
-        LOG_ERROR("> PR {} and branch name ({}) is exist in local repo!", select, branchName);
+        LOG_ERROR("pr", "> PR {} and branch name ({}) is exist in local repo!", select, branchName);
         return;
     }
 
@@ -177,7 +177,7 @@ void TestPR()
     Warhead::Process::Git::Checkout(_path.generic_string(), branchName);
     Warhead::Process::Git::CheckoutPR(_path.generic_string(), upstreamName, select);
 
-    LOG_INFO("Go next? [yes (default) / no]");
+    LOG_INFO("pr", "Go next? [yes (default) / no]");
     std::getline(std::cin, select);
 
     if (!select.empty() && select.substr(0, 1) != "y")
@@ -186,12 +186,12 @@ void TestPR()
 
 void Select()
 {
-    LOG_INFO("# -- Select option:");
-    LOG_INFO("# 1. Test AzerothCore PR");
-    LOG_INFO("# --");
-    LOG_INFO("# 99. Exit");
-    LOG_INFO("# --");
-    LOG_INFO("> Select:");
+    LOG_INFO("pr", "# -- Select option:");
+    LOG_INFO("pr", "# 1. Test AzerothCore PR");
+    LOG_INFO("pr", "# --");
+    LOG_INFO("pr", "# 99. Exit");
+    LOG_INFO("pr", "# --");
+    LOG_INFO("pr", "> Select:");
 
     std::string selOptionCleanup;
     std::getline(std::cin, selOptionCleanup);
@@ -214,8 +214,8 @@ void Select()
 
 int main()
 {
-    LOG_INFO("> {}", GitRevision::GetFullVersion());
-    LOG_INFO("--");
+    LOG_INFO("pr", "> {}", GitRevision::GetFullVersion());
+    LOG_INFO("pr", "--");
 
     LoadPathInfo();
 

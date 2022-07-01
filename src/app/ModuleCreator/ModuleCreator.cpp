@@ -28,7 +28,7 @@ namespace
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: {}", e.displayText());
+            LOG_FATAL("mc", "> Failed create directory: {}", e.displayText());
         }
     }
 
@@ -45,7 +45,7 @@ namespace
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directories: {}", e.displayText());
+            LOG_FATAL("mc","> Failed create directories: {}", e.displayText());
         }
 
         return true;
@@ -77,18 +77,18 @@ bool ModuleCreator::CreateBaseArgs(std::string const& moduleName)
     pathToModuleSrc = pathToModule + "/src/";
     defineText = GetUpperText(moduleName);
 
-    LOG_DEBUG("");
-    LOG_DEBUG("Create defines:");
-    LOG_DEBUG("> scriptName - {}", scriptName);
-    LOG_DEBUG("> correctModuleName - {}", correctModuleName);
-    LOG_DEBUG("> pathToModule - {}", pathToModule);
-    LOG_DEBUG("> pathToModuleSrc - {}", pathToModuleSrc);
-    LOG_DEBUG("> defineText - {}", defineText);
-    LOG_DEBUG("");
+    LOG_DEBUG("mc", "");
+    LOG_DEBUG("mc", "Create defines:");
+    LOG_DEBUG("mc", "> scriptName - {}", scriptName);
+    LOG_DEBUG("mc", "> correctModuleName - {}", correctModuleName);
+    LOG_DEBUG("mc", "> pathToModule - {}", pathToModule);
+    LOG_DEBUG("mc", "> pathToModuleSrc - {}", pathToModuleSrc);
+    LOG_DEBUG("mc", "> defineText - {}", defineText);
+    LOG_DEBUG("mc", "");
 
     if (!MakeDirForNewModule(pathToModule))
     {
-        LOG_FATAL("> Module '{}' is exist!", correctModuleName);
+        LOG_FATAL("mc", "> Module '{}' is exist!", correctModuleName);
         return false;
     }
 
@@ -103,8 +103,8 @@ bool ModuleCreator::AddTextInFile(std::string_view path, std::string_view text)
     std::ofstream file(temp.generic_string());
     if (!file.is_open())
     {
-        LOG_FATAL("Failed to create file '{}'", temp.generic_string());
-        LOG_INFO("");
+        LOG_FATAL("mc", "Failed to create file '{}'", temp.generic_string());
+        LOG_INFO("mc", "");
         return false;
     }
 
@@ -119,7 +119,7 @@ bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
     std::string cppFileName = GetScriptCPPFileName(moduleName);
     std::string hFileName = GetScriptHFileName(moduleName);
 
-    LOG_DEBUG("> Try create cpp file - {}", cppFileName);
+    LOG_DEBUG("mc", "> Try create cpp file - {}", cppFileName);
 
     std::string _text;
 
@@ -132,8 +132,8 @@ bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
     if (!AddTextInFile(pathToModuleSrc + cppFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", cppFileName);
-    LOG_DEBUG("> Try create .h file - {}", hFileName);
+    LOG_INFO("mc", "> Created - {}", cppFileName);
+    LOG_DEBUG("mc", "> Try create .h file - {}", hFileName);
 
     _text.clear();
 
@@ -147,7 +147,7 @@ bool ModuleCreator::CreateClassFiles(std::string const& moduleName)
     if (!AddTextInFile(pathToModuleSrc + hFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", hFileName);
+    LOG_INFO("mc", "> Created - {}", hFileName);
 
     return true;
 }
@@ -174,7 +174,7 @@ bool ModuleCreator::CreateScriptLoader(std::string const& moduleName)
     if (!AddTextInFile(pathToModuleSrc + fileName, _text))
         return false;
 
-    LOG_INFO("> Created script loader ({})", fileName);
+    LOG_INFO("mc", "> Created script loader ({})", fileName);
 
     return true;
 }
@@ -184,7 +184,7 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     std::string SCFileName = GetSCCPPFileName(moduleName);
     std::string hFileName = GetScriptHFileName(moduleName);
 
-    LOG_DEBUG("> Try create cpp file - {}", SCFileName);
+    LOG_DEBUG("mc", "> Try create cpp file - {}", SCFileName);
 
     std::string _text;
 
@@ -218,7 +218,7 @@ bool ModuleCreator::CreateSCFile(std::string const& moduleName)
     if (!AddTextInFile(pathToModuleSrc + SCFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", SCFileName);
+    LOG_INFO("mc", "> Created - {}", SCFileName);
 
     return true;
 }
@@ -227,7 +227,7 @@ bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
 {
     std::string configFileName = GetConfigFileName(moduleName);
 
-    LOG_DEBUG("> Try create config file - {}", configFileName);
+    LOG_DEBUG("mc", "> Try create config file - {}", configFileName);
 
     std::string _text;
 
@@ -244,14 +244,14 @@ bool ModuleCreator::CreateConfigFile(std::string const& moduleName)
     if (!AddTextInFile(pathToModule + "/conf/" + configFileName, _text))
         return false;
 
-    LOG_INFO("> Created - {}", configFileName);
+    LOG_INFO("mc", "> Created - {}", configFileName);
 
     return true;
 }
 
 bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
 {
-    LOG_DEBUG("> Try create - CMakeLists.txt");
+    LOG_DEBUG("mc", "> Try create - CMakeLists.txt");
 
     std::string _text;
 
@@ -272,7 +272,7 @@ bool ModuleCreator::CreateCmakeFile(std::string const& moduleName)
     if (!AddTextInFile(pathToModule + "/" + "CMakeLists.txt", _text))
         return false;
 
-    LOG_INFO("> Created - CMakeLists.txt");
+    LOG_INFO("mc", "> Created - CMakeLists.txt");
 
     return true;
 }
@@ -465,14 +465,14 @@ bool ModuleCreator::CreateBaseFiles()
         }
         catch (const Poco::Exception& e)
         {
-            LOG_FATAL("> Failed create directory: {}", e.displayText());
+            LOG_FATAL("mc", "> Failed create directory: {}", e.displayText());
         }
     };
 
     CreateModuleDir("conf");
     CreateModuleDir("src");
 
-    LOG_INFO("> Base module files created sucessfull");
+    LOG_INFO("mc", "> Base module files created sucessfull");
 
     return true;
 }
@@ -484,8 +484,8 @@ void ModuleCreator::CreateModule(std::string const& moduleName, bool isWarheadMo
     if (!CreateBaseArgs(moduleName))
         return;
 
-    LOG_INFO("Creating {}Core module - {}", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName);
-    LOG_INFO("> Move base module files to new module - {}", correctModuleName);
+    LOG_INFO("mc", "Creating {}Core module - {}", _IsWarheadModule ? "Warhead" : "Azeroth", moduleName);
+    LOG_INFO("mc", "> Move base module files to new module - {}", correctModuleName);
 
     // #1. Create base files
     CreateBaseFiles();

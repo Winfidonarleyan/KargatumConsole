@@ -22,11 +22,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-
-namespace std::filesystem
-{
-    class path;
-}
+#include <filesystem>
 
 using SCPair = std::pair<std::string, std::string>;
 using ListExtensions = std::vector<std::filesystem::path>;

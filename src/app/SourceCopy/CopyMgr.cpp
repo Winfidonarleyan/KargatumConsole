@@ -47,14 +47,14 @@ bool CopyMgr::Load()
 
     if (!sConfigMgr->LoadAppConfigs())
     {
-        LOG_FATAL("> Config not loaded!");
+        LOG_FATAL("copy", "> Config not loaded!");
         return false;
     }
 
     auto const& keys = sConfigMgr->GetKeysByString(PREFIX_SC);
     if (!keys.size())
     {
-        LOG_ERROR("CopyMgr::Load: Not found sc, change config file!");
+        LOG_ERROR("copy", "CopyMgr::Load: Not found sc, change config file!");
         return false;
     }
 
@@ -63,7 +63,7 @@ bool CopyMgr::Load()
 
     if (_store.empty())
     {
-        LOG_ERROR("> SC list is empty!");
+        LOG_ERROR("copy", "> SC list is empty!");
         return false;
     }
 
@@ -72,10 +72,10 @@ bool CopyMgr::Load()
     for (auto const& itr : _store)
     {
         _indexStore.emplace(++index, itr.first);
-        LOG_DEBUG("> Added SC {} - '{}'", index, itr.first);
+        LOG_DEBUG("copy", "> Added SC {} - '{}'", index, itr.first);
     }
 
-    LOG_INFO("> Loaded {} source copy paths", _indexStore.size());
+    LOG_INFO("copy", "> Loaded {} source copy paths", _indexStore.size());
 
     return true;
 }
@@ -118,7 +118,7 @@ void CopyMgr::CreatePathFromConfig(std::string_view configScName)
 
     if (IsExist(std::string(configScName)))
     {
-        LOG_ERROR("CopyMgr::CreatePathFromConfig: SC for ({}) exist!", configScName);
+        LOG_ERROR("copy", "CopyMgr::CreatePathFromConfig: SC for ({}) exist!", configScName);
         return;
     }
 
@@ -127,14 +127,14 @@ void CopyMgr::CreatePathFromConfig(std::string_view configScName)
 
     if (options.empty())
     {
-        LOG_ERROR("CopyMgr::CreatePathFromConfig: Missing config option ({})", configScName);
+        LOG_ERROR("copy", "CopyMgr::CreatePathFromConfig: Missing config option ({})", configScName);
         return;
     }
 
     auto const& tokens = Warhead::Tokenize(options, ' ', true);
     if (!tokens.size() || tokens.size() != 2)
     {
-        LOG_ERROR("CopyMgr::CreatePathFromConfig: Bad config options for SC ({})", scName);
+        LOG_ERROR("copy", "CopyMgr::CreatePathFromConfig: Bad config options for SC ({})", scName);
         return;
     }
 
@@ -142,7 +142,7 @@ void CopyMgr::CreatePathFromConfig(std::string_view configScName)
     {
         if (path.empty())
         {
-            LOG_ERROR("CopyMgr::CreatePathFromConfig: Empty path for SC ({})", path.generic_string(), scName);
+            LOG_ERROR("copy", "CopyMgr::CreatePathFromConfig: Empty path for SC ({})", path.generic_string(), scName);
             return false;
         }
 
@@ -150,19 +150,19 @@ void CopyMgr::CreatePathFromConfig(std::string_view configScName)
         {
             if (!fs::exists(path))
             {
-                LOG_ERROR("CopyMgr::CreatePathFromConfig: Non exist path '{}' for SC ({})", path.generic_string(), scName);
+                LOG_ERROR("copy", "CopyMgr::CreatePathFromConfig: Non exist path '{}' for SC ({})", path.generic_string(), scName);
                 return false;
             }
 
             if (!fs::is_directory(path))
             {
-                LOG_ERROR("CopyMgr::CreatePathFromConfig: Path is not directory '{}' for SC ({})", path.generic_string(), scName);
+                LOG_ERROR("copy", "CopyMgr::CreatePathFromConfig: Path is not directory '{}' for SC ({})", path.generic_string(), scName);
                 return false;
             }
         }
         catch (fs::filesystem_error const& error)
         {
-            LOG_ERROR("> Error at check path: {}", error.what());
+            LOG_ERROR("copy", "> Error at check path: {}", error.what());
             return false;
         }
 
@@ -198,11 +198,11 @@ bool CopyMgr::SetSC(uint8 index)
 
     if (scName.empty())
     {
-        LOG_FATAL("> SC: Index '{}' is incorrect!", index);
+        LOG_FATAL("copy", "> SC: Index '{}' is incorrect!", index);
         return false;
     }
 
-    LOG_INFO("> Selected SC '{}'", scName);
+    LOG_INFO("copy", "> Selected SC '{}'", scName);
 
     _selectedSC = scName;
 
@@ -228,15 +228,15 @@ void CopyMgr::SendSCInfo()
 {
     if (_selectedSC.empty())
     {
-        LOG_FATAL(">> Please select SC name.");
+        LOG_FATAL("copy", ">> Please select SC name.");
 
         for (auto const& [index, scName] : _indexStore)
         {
-            LOG_INFO("{}. '{}'", index, scName);
+            LOG_INFO("copy", "{}. '{}'", index, scName);
         }
 
-        LOG_INFO("# --");
-        LOG_INFO("> Select:");
+        LOG_INFO("copy", "# --");
+        LOG_INFO("copy", "> Select:");
 
         std::string selIndex;
         std::getline(std::cin, selIndex);
@@ -247,7 +247,7 @@ void CopyMgr::SendSCInfo()
             SendSCInfo();
     }
     else
-        LOG_INFO(">> Selected SC '{}'", _selectedSC);
+        LOG_INFO("copy", ">> Selected SC '{}'", _selectedSC);
 
     if (!IsCorrectSC())
         SendSCInfo();
@@ -255,15 +255,15 @@ void CopyMgr::SendSCInfo()
 
 void CopyMgr::SendBaseInfo()
 {
-    LOG_INFO(">> Welcome");
-    LOG_INFO("--");
+    LOG_INFO("copy", ">> Welcome");
+    LOG_INFO("copy", "--");
 
     SendSCInfo();
 
     if (_selectedSC.empty())
         ABORT("SC is empty!");
 
-    LOG_INFO("> Start copy? [yes (default) / no]");
+    LOG_INFO("copy", "> Start copy? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -275,7 +275,7 @@ void CopyMgr::SendBaseInfo()
     CopyFiles("default config", "configs/", { ".dist" });
     CopyFiles("modules config", "configs/modules/", { ".dist" });
 
-    LOG_WARN("> All steps done.");
+    LOG_WARN("copy", "> All steps done.");
 
     std::getline(std::cin, select);
 }
@@ -288,13 +288,13 @@ bool CopyMgr::FillFileList(fs::path const& path, ListExtensions* extensions /*= 
     {
         if (!fs::exists(path))
         {
-            LOG_ERROR("> Empty dir '{}'", path.generic_string());
+            LOG_ERROR("copy", "> Empty dir '{}'", path.generic_string());
             return false;
         }
 
         if (!fs::is_directory(path))
         {
-            LOG_ERROR("> Incorrect dir '{}'", path.generic_string());
+            LOG_ERROR("copy", "> Incorrect dir '{}'", path.generic_string());
             return false;
         }
     }
@@ -321,12 +321,12 @@ bool CopyMgr::FillFileList(fs::path const& path, ListExtensions* extensions /*= 
 
 void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, ListExtensions extensions /*= {}*/)
 {
-    LOG_INFO("> Prepare to copy {} files", type);
+    LOG_INFO("copy", "> Prepare to copy {} files", type);
 
     auto const& sc = GetSC(_selectedSC);
     if (!sc)
     {
-        LOG_ERROR("> Not found paths for SC '{}'", _selectedSC);
+        LOG_ERROR("copy", "> Not found paths for SC '{}'", _selectedSC);
         return;
     }
 
@@ -343,27 +343,27 @@ void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, Li
 
     if (!FillFileList(sourceDir, &extensions))
     {
-        LOG_ERROR("> Skip this step");
+        LOG_ERROR("copy", "> Skip this step");
         return;
     }
 
     if (_localeFileStorage.empty())
         return;
 
-    LOG_INFO("> Start copy {} files", type);
-    LOG_INFO("> Options:");
-    LOG_INFO("--");
-    LOG_INFO("> Found {} files", _localeFileStorage.size());
-    LOG_INFO("> From: {}", sourceDir.generic_string());
-    LOG_INFO("> To: {}", binaryDir.generic_string());
-    LOG_INFO("--");
+    LOG_INFO("copy", "> Start copy {} files", type);
+    LOG_INFO("copy", "> Options:");
+    LOG_INFO("copy", "--");
+    LOG_INFO("copy", "> Found {} files", _localeFileStorage.size());
+    LOG_INFO("copy", "> From: {}", sourceDir.generic_string());
+    LOG_INFO("copy", "> To: {}", binaryDir.generic_string());
+    LOG_INFO("copy", "--");
 
     try
     {
         if (!fs::exists(binaryDir))
         {
-            LOG_ERROR("> Dir '{}' don't exist", binaryDir.generic_string());
-            LOG_WARN("> Create this dir? [yes (default) / no]");
+            LOG_ERROR("copy", "> Dir '{}' don't exist", binaryDir.generic_string());
+            LOG_WARN("copy", "> Create this dir? [yes (default) / no]");
 
             std::string select;
             std::getline(std::cin, select);
@@ -376,7 +376,7 @@ void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, Li
     }
     catch (fs::filesystem_error const& error)
     {
-        LOG_ERROR("> Error at check birary dir '{}': {}", binaryDir.generic_string(), error.what());
+        LOG_ERROR("copy", "> Error at check birary dir '{}': {}", binaryDir.generic_string(), error.what());
         return;
     }
 
@@ -389,18 +389,18 @@ void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, Li
         try
         {
             if (fs::copy_file(path, fs::path(binaryDir.generic_string() + fileName), fs::copy_options::update_existing))
-                LOG_INFO("> {}. File '{}' copied", ++filesCopied, fileName);
+                LOG_INFO("copy", "> {}. File '{}' copied", ++filesCopied, fileName);
             else
-                LOG_INFO("> File '{}' is actual", fileName);
+                LOG_INFO("copy", "> File '{}' is actual", fileName);
         }
         catch (fs::filesystem_error const& error)
         {
-            LOG_ERROR("> Error at copy file: {}", error.what());
+            LOG_ERROR("copy", "> Error at copy file: {}", error.what());
         }
     }
 
     if (!filesCopied)
-        LOG_INFO("> All files is actual");
+        LOG_INFO("copy", "> All files is actual");
 
-    LOG_INFO("--");
+    LOG_INFO("copy", "--");
 }

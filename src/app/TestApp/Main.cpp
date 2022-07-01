@@ -17,53 +17,46 @@
 
 #include "Common.h"
 #include "Log.h"
-#include "GitRevision.h"
-#include "StopWatch.h"
-#include "Resolver.h"
-#include "IoContext.h"
-#include "IpAddress.h"
-#include <functional>
-#include <iostream>
-
-#include <boost/beast.hpp>
-#include <boost/beast/http.hpp>
-
-namespace net = boost::asio;
-namespace beast = boost::beast;
-namespace http = beast::http;
-using net::ip::tcp;
+#include "Duration.h"
+#include "Config.h"
+#include <chrono>
+#include <format>
+#include <filesystem>
 
 int main()
 {
-    LOG_INFO("> {}", GitRevision::GetFullVersion());
-    LOG_INFO("--");
+    auto configFile = std::filesystem::path("TestApp.conf");
 
-    LOG_INFO("> Start download..."); // https://launcher.wowka.su/patch-ruRU-5.mpq
+    // Add file and args in config
+    sConfigMgr->Configure(configFile.generic_string());
 
-    try
-    {
-        net::io_context io;
-        tcp::socket s(io);
-        s.connect(boost::asio::ip::tcp::endpoint(Warhead::Net::make_address("launcher.wowka.su"), 80));
+    if (!sConfigMgr->LoadAppConfigs())
+        return 1;
 
-        {
-            http::request<http::empty_body> req;
-            req.method(http::verb::get);
-            req.target("/patch-ruRU-5.mpq");
-            req.version(10);
-            http::write(s, req);
-        }
+    // Init logging
+    //sLog->Initialize();
+    sLog->UsingDefaultLogs();
 
-        {
-            http::request<http::string_body> response;
-            beast::flat_buffer buf;
-            http::read(s, buf, response);
-        }
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("{}", e.what());
-    }    
+    LOG_INFO("server", "");
+    LOG_INFO("server", " ██╗     ██╗  █████╗  ██████╗  ██╗  ██╗ ███████╗  █████╗  ██████╗");
+    LOG_INFO("server", " ██║     ██║ ██╔══██╗ ██╔══██╗ ██║  ██║ ██╔════╝ ██╔══██╗ ██╔═══██╗");
+    LOG_INFO("server", " ██║     ██║ ███████║ ██████╔╝ ███████║ █████╗   ███████║ ██║   ██║");
+    LOG_INFO("server", " ██║ ██╗ ██║ ██╔══██║ ██╔══██╗ ██╔══██║ ██╔══╝   ██╔══██║ ██║   ██║");
+    LOG_INFO("server", " ╚═██╔═██╔═╝ ██║  ██║ ██║  ██║ ██║  ██║ ███████╗ ██║  ██║ ██████╔═╝");
+    LOG_INFO("server", "   ╚═╝ ╚═╝   ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═╝ ╚═════╝");
+    LOG_INFO("server", "                               ██████╗   ██████╗  ██████╗  ███████╗");
+    LOG_INFO("server", "                               ██╔═══╝  ██╔═══██╗ ██╔══██╗ ██╔════╝");
+    LOG_INFO("server", "                               ██║      ██║   ██║ ██████╔╝ █████╗");
+    LOG_INFO("server", "                               ██║      ██║   ██║ ██╔══██╗ ██╔══╝");
+    LOG_INFO("server", "                               ╚██████╗ ╚██████╔╝ ██║  ██║ ███████╗");
+    LOG_INFO("server", "                                ╚═════╝  ╚═════╝  ╚═╝  ╚═╝ ╚══════╝");
+    LOG_INFO("server", "");
+
+    LOG_GM(1, "Test gm");
+
+    //std::chrono::zoned_time cur_time{ std::chrono::current_zone(), std::chrono::system_clock::now() };
+
+    //LOG_INFO("server", "Seconds - {}", std::format("{}", std::chrono::duration_cast<Seconds>(cur_time.get_local_time().time_since_epoch())));
 
     return 0;
 }

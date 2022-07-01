@@ -33,7 +33,7 @@ void Selection();
 void SelectCreateModule(uint32 option)
 {
     system("cls");
-    LOG_INFO("-- Enter {}Core module name:", option == 1 ? "Warhead" : "Azeroth");
+    LOG_INFO("mc", "-- Enter {}Core module name:", option == 1 ? "Warhead" : "Azeroth");
 
     std::string moduleName;
     std::getline(std::cin, moduleName);
@@ -45,15 +45,15 @@ void SelectCreateModule(uint32 option)
 
 void Selection()
 {
-    LOG_INFO("{}", GitRevision::GetFullVersion());
-    LOG_INFO("");
-    LOG_INFO("# -- Select option:");
-    LOG_INFO("1. Create module WarheadCore");
-    LOG_INFO("2. Create module AzerothCore");
-    LOG_INFO("# --");
-    LOG_INFO("9. Exit");
-    LOG_INFO("# --");
-    LOG_INFO("> Enter select:");
+    LOG_INFO("mc", "{}", GitRevision::GetFullVersion());
+    LOG_INFO("mc", "");
+    LOG_INFO("mc", "# -- Select option:");
+    LOG_INFO("mc", "1. Create module WarheadCore");
+    LOG_INFO("mc", "2. Create module AzerothCore");
+    LOG_INFO("mc", "# --");
+    LOG_INFO("mc", "9. Exit");
+    LOG_INFO("mc", "# --");
+    LOG_INFO("mc", "> Enter select:");
 
     std::string selection;
     std::getline(std::cin, selection);

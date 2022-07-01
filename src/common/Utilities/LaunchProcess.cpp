@@ -17,6 +17,7 @@
 
 #include "LaunchProcess.h"
 #include "Log.h"
+#include "StringFormat.h"
 #include <Poco/Process.h>
 #include <Poco/Pipe.h>
 #include <Poco/PipeStream.h>

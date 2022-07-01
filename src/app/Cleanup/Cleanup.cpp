@@ -60,11 +60,11 @@ namespace
 
     inline void ShowStats(std::string_view cleanupName, StopWatch const& sw, ReplaceFilesStore const& stats, std::string_view path = {})
     {
-        LOG_INFO("--");
-        LOG_INFO("> Cleanup stats: {}", cleanupName);
-        LOG_INFO("> Replaced files: {}", stats.size());
-        LOG_INFO("> Elapsed time: {}", sw);
-        LOG_INFO("--");
+        LOG_INFO("cleanup", "--");
+        LOG_INFO("cleanup", "> Cleanup stats: {}", cleanupName);
+        LOG_INFO("cleanup", "> Replaced files: {}", stats.size());
+        LOG_INFO("cleanup", "> Elapsed time: {}", sw);
+        LOG_INFO("cleanup", "--");
 
         if (stats.empty())
             return;
@@ -72,15 +72,15 @@ namespace
         std::size_t count{ 0 };
 
         for (auto const& [fileName, replacedLines] : stats)
-            LOG_INFO("{}. File: {}. Lines: {}", ++count, fileName, replacedLines);
+            LOG_INFO("cleanup", "{}. File: {}. Lines: {}", ++count, fileName, replacedLines);
 
-        LOG_INFO("--");
+        LOG_INFO("cleanup", "--");
 
         if (path.empty() || !Warhead::Process::Git::IsRepository(path))
             return;
 
-        LOG_INFO("> Found repository in dir '{}'", path);
-        LOG_INFO("> Commit this changes? [yes (default) / no]");
+        LOG_INFO("cleanup", "> Found repository in dir '{}'", path);
+        LOG_INFO("cleanup", "> Commit this changes? [yes (default) / no]");
 
         std::string select;
         std::getline(std::cin, select);
@@ -94,7 +94,7 @@ namespace
         for (auto const& [fileName, replacedLines] : stats)
             desc.append(Warhead::StringFormat("{}. File: {}. Lines: {}\n", ++count, fileName, replacedLines));
 
-        LOG_INFO("> Commit this changes. Description:\n{}", desc);
+        LOG_INFO("cleanup", "> Commit this changes. Description:\n{}", desc);
         GitCommit(path, cleanupName, desc);
     }
 
@@ -116,7 +116,7 @@ void Cleanup::RemoveWhitespace()
 
     if (IsCoreDir(_path))
     {
-        LOG_INFO("> Found core dir. Check src and modules dirs only");
+        LOG_INFO("cleanup", "> Found core dir. Check src and modules dirs only");
 
         fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
         fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
@@ -129,13 +129,13 @@ void Cleanup::RemoveWhitespace()
 
     if (_localeFileStorage.empty())
     {
-        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        LOG_FATAL("cleanup", "Cleanup: Cannot continue, found 0 files.");
         return;
     }
 
-    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
+    LOG_DEBUG("cleanup", "> Search complete. Found {} files", _localeFileStorage.size());
 
-    LOG_INFO("> Start cleanup? [yes (default) / no]");
+    LOG_INFO("cleanup", "> Start cleanup? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -145,7 +145,7 @@ void Cleanup::RemoveWhitespace()
 
     StopWatch sw;
 
-    LOG_INFO("> Cleanup: Start cleanup (remove whitespace) for '{}'", _path.generic_string());
+    LOG_INFO("cleanup", "> Cleanup: Start cleanup (remove whitespace) for '{}'", _path.generic_string());
 
     ReplaceFilesStore stats;
     std::size_t size{ _localeFileStorage.size() };
@@ -172,7 +172,7 @@ void Cleanup::ReplaceTabs()
 
     if (IsCoreDir(_path))
     {
-        LOG_INFO("> Found core dir. Check src and modules dirs only");
+        LOG_INFO("cleanup", "> Found core dir. Check src and modules dirs only");
 
         fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
         fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
@@ -185,13 +185,13 @@ void Cleanup::ReplaceTabs()
 
     if (_localeFileStorage.empty())
     {
-        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        LOG_FATAL("cleanup", "Cleanup: Cannot continue, found 0 files.");
         return;
     }
 
-    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
+    LOG_DEBUG("cleanup", "> Search complete. Found {} files", _localeFileStorage.size());
 
-    LOG_INFO("> Start cleanup? [yes (default) / no]");
+    LOG_INFO("cleanup", "> Start cleanup? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -201,7 +201,7 @@ void Cleanup::ReplaceTabs()
 
     StopWatch sw;
 
-    LOG_INFO("> Cleanup: Start cleanup (replace tabs) for '{}'", _path.generic_string().c_str());
+    LOG_INFO("cleanup", "> Cleanup: Start cleanup (replace tabs) for '{}'", _path.generic_string().c_str());
 
     ReplaceFilesStore stats;
     std::size_t size{ _localeFileStorage.size() };
@@ -228,7 +228,7 @@ void Cleanup::SortIncludes()
 
     if (IsCoreDir(_path))
     {
-        LOG_INFO("> Found core dir. Check src and modules dirs only");
+        LOG_INFO("cleanup", "> Found core dir. Check src and modules dirs only");
 
         fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
         fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
@@ -241,13 +241,13 @@ void Cleanup::SortIncludes()
 
     if (_localeFileStorage.empty())
     {
-        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        LOG_FATAL("cleanup", "Cleanup: Cannot continue, found 0 files.");
         return;
     }
 
-    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
+    LOG_DEBUG("cleanup", "> Search complete. Found {} files", _localeFileStorage.size());
 
-    LOG_INFO("> Start cleanup? [yes (default) / no]");
+    LOG_INFO("cleanup", "> Start cleanup? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -257,7 +257,7 @@ void Cleanup::SortIncludes()
 
     StopWatch sw;
 
-    LOG_INFO("> Cleanup: Start cleanup (sort includes) for '{}'", _path.generic_string().c_str());
+    LOG_INFO("cleanup", "> Cleanup: Start cleanup (sort includes) for '{}'", _path.generic_string().c_str());
 
     ReplaceFilesStore stats;
     std::size_t size{ _localeFileStorage.size() };
@@ -284,7 +284,7 @@ void Cleanup::CheckSameIncludes()
 
     if (IsCoreDir(_path))
     {
-        LOG_INFO("> Found core dir. Check src and modules dirs only");
+        LOG_INFO("cleanup", "> Found core dir. Check src and modules dirs only");
 
         fs::path pathtoSrc{ _path.generic_string() + PATH_TO_SRC };
         fs::path pathtoModules{ _path.generic_string() + PATH_TO_MODULES };
@@ -297,13 +297,13 @@ void Cleanup::CheckSameIncludes()
 
     if (_localeFileStorage.empty())
     {
-        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        LOG_FATAL("cleanup", "Cleanup: Cannot continue, found 0 files.");
         return;
     }
 
-    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
+    LOG_DEBUG("cleanup", "> Search complete. Found {} files", _localeFileStorage.size());
 
-    LOG_INFO("> Start cleanup? [yes (default) / no]");
+    LOG_INFO("cleanup", "> Start cleanup? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -313,7 +313,7 @@ void Cleanup::CheckSameIncludes()
 
     StopWatch sw;
 
-    LOG_INFO("> Cleanup: Start cleanup (same includes) for '{}'", _path.generic_string().c_str());
+    LOG_INFO("cleanup", "> Cleanup: Start cleanup (same includes) for '{}'", _path.generic_string().c_str());
 
     ReplaceFilesStore stats;
     std::size_t size{ _localeFileStorage.size() };
@@ -342,13 +342,13 @@ void Cleanup::CheckUsingIncludesCount()
 
     if (_localeFileStorage.empty())
     {
-        LOG_FATAL("Cleanup: Cannot continue, found 0 files.");
+        LOG_FATAL("cleanup", "Cleanup: Cannot continue, found 0 files.");
         return;
     }
 
-    LOG_DEBUG("> Search complete. Found {} files", _localeFileStorage.size());
+    LOG_DEBUG("cleanup", "> Search complete. Found {} files", _localeFileStorage.size());
 
-    LOG_INFO("> Start job? [yes (default) / no]");
+    LOG_INFO("cleanup", "> Start job? [yes (default) / no]");
 
     std::string select;
     std::getline(std::cin, select);
@@ -356,7 +356,7 @@ void Cleanup::CheckUsingIncludesCount()
     if (!select.empty() && select.substr(0, 1) != "y")
         return;
 
-    LOG_INFO("> Cleanup: Start job (check includes count) for '{}'", _path.generic_string().c_str());
+    LOG_INFO("cleanup", "> Cleanup: Start job (check includes count) for '{}'", _path.generic_string().c_str());
 
     CheckIncludesInFile();
 }
@@ -372,7 +372,7 @@ bool Cleanup::SetPath(std::string const& path)
         return false;
     }
 
-    LOG_INFO("> Cleanup: Added path '{}'", path.c_str());
+    LOG_INFO("cleanup", "> Cleanup: Added path '{}'", path.c_str());
 
     _path = fs::path(path);
 
@@ -405,7 +405,7 @@ void Cleanup::SendPathInfo(bool manually /*= false*/)
 
         if (selectOption == 8)
         {
-            LOG_INFO("-- Enter path:");
+            LOG_INFO("cleanup", "-- Enter path:");
             std::getline(std::cin, selectPath);
         }
         else
@@ -421,23 +421,23 @@ void Cleanup::SendPathInfo(bool manually /*= false*/)
     std::string pathInfo = GetPath();
     if (pathInfo.empty())
     {
-        LOG_FATAL(">> Path is empty! Please enter path.");
+        LOG_FATAL("cleanup", ">> Path is empty! Please enter path.");
 
         if (!manually)
         {
             for (auto const& [index, _path] : _pathList)
             {
-                LOG_INFO("{}. '{}'", index, _path.c_str());
+                LOG_INFO("cleanup", "{}. '{}'", index, _path.c_str());
             }
 
-            LOG_INFO("# --");
-            LOG_INFO("8. Enter path manually");
-            LOG_INFO("> Select:");
+            LOG_INFO("cleanup", "# --");
+            LOG_INFO("cleanup", "8. Enter path manually");
+            LOG_INFO("cleanup", "> Select:");
         }
         else
         {
-            LOG_INFO("# --");
-            LOG_INFO("-- Enter path");
+            LOG_INFO("cleanup", "# --");
+            LOG_INFO("cleanup", "-- Enter path");
         }
 
         std::string selPathEnter;
@@ -449,7 +449,7 @@ void Cleanup::SendPathInfo(bool manually /*= false*/)
             SendPathInfo(manually);
     }
     else
-        LOG_INFO(">> Entered path '{}'", pathInfo);
+        LOG_INFO("cleanup", ">> Entered path '{}'", pathInfo);
 
     if (!IsCorrectPath())
         SendPathInfo(manually);
@@ -461,25 +461,25 @@ void Cleanup::LoadPathInfo()
 
     if (!sConfigMgr->LoadAppConfigs())
     {
-        LOG_FATAL("> Config not loaded!");
+        LOG_FATAL("cleanup", "> Config not loaded!");
         return;
     }
 
-    LOG_INFO(">> Loading path list...");
+    LOG_INFO("cleanup", ">> Loading path list...");
 
     _pathList.clear();
 
     std::string pathStr = sConfigMgr->GetOption<std::string>("Cleanup.PathList", "");
     if (pathStr.empty())
     {
-        LOG_FATAL("Cleanup: Config option 'Cleanup.PathList' is empty!");
+        LOG_FATAL("cleanup", "Cleanup: Config option 'Cleanup.PathList' is empty!");
         return;
     }
 
     std::vector<std::string_view> tokens = Warhead::Tokenize(pathStr, ',', false);
     if (tokens.empty())
     {
-        LOG_FATAL("Cleanup: Config option 'Cleanup.PathList' is incorrect!");
+        LOG_FATAL("cleanup", "Cleanup: Config option 'Cleanup.PathList' is incorrect!");
         return;
     }
 
@@ -500,8 +500,8 @@ void Cleanup::LoadPathInfo()
         _pathList.emplace(index, toStr);
     }
 
-    LOG_INFO("> Loaded {} paths", _pathList.size());
-    LOG_INFO("--");
+    LOG_INFO("cleanup", "> Loaded {} paths", _pathList.size());
+    LOG_INFO("cleanup", "--");
 }
 
 // private fn
@@ -809,6 +809,6 @@ void Cleanup::CheckIncludesInFile()
 
         count++;
 
-        LOG_INFO("{}. '{}' - {}", count, strInclude.c_str(), countInclude);
+        LOG_INFO("cleanup", "{}. '{}' - {}", count, strInclude.c_str(), countInclude);
     }
 }
