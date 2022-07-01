@@ -1,4 +1,5 @@
-# This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
+#
+# This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -7,12 +8,13 @@
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
 
 include(CheckSymbolExists)
 
 set(strtod_l_headers stdlib.h)
 
-if(APPLE)
+if (APPLE)
   set(strtod_l_headers ${strtod_l_headers} xlocale.h)
 endif ()
 
@@ -57,6 +59,11 @@ if (HAVE_STRTOD_L)
       FMT_LOCALE)
 endif()
 
+# Define FMT_CONSTEVAL for current using in c++20
+target_compile_definitions(fmt
+  PUBLIC
+    FMT_CONSTEVAL=)
+
 target_include_directories(fmt
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -68,4 +75,4 @@ target_link_libraries(fmt
 set_target_properties(fmt
   PROPERTIES
     FOLDER
-      "dep")
+      "deps")
