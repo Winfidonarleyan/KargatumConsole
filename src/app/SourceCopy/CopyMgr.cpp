@@ -20,8 +20,10 @@
 #include "Log.h"
 #include "Util.h"
 #include "StringConvert.h"
+#include "ProgressBar.h"
 #include <filesystem>
 #include <iostream>
+#include <optional>
 
 namespace fs = std::filesystem;
 
@@ -275,6 +277,9 @@ void CopyMgr::SendBaseInfo()
     CopyFiles("default config", "configs/", { ".dist" });
     CopyFiles("modules config", "configs/modules/", { ".dist" });
 
+    // Dll's scripts
+    CopyScripts();
+
     LOG_WARN("copy", "> All steps done.");
 
     std::getline(std::cin, select);
@@ -304,7 +309,7 @@ bool CopyMgr::FillFileList(fs::path const& path, ListExtensions* extensions /*= 
         return false;
     }
 
-    for (auto& dirEntry : fs::directory_iterator(path))
+    for (auto const& dirEntry : fs::directory_iterator(path))
     {
         if (dirEntry.is_directory())
             continue;
@@ -350,13 +355,11 @@ void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, Li
     if (_localeFileStorage.empty())
         return;
 
-    LOG_INFO("copy", "> Start copy {} files", type);
-    LOG_INFO("copy", "> Options:");
-    LOG_INFO("copy", "--");
-    LOG_INFO("copy", "> Found {} files", _localeFileStorage.size());
-    LOG_INFO("copy", "> From: {}", sourceDir.generic_string());
-    LOG_INFO("copy", "> To: {}", binaryDir.generic_string());
-    LOG_INFO("copy", "--");
+    LOG_DEBUG("copy", "> Start copy {} files", type);
+    LOG_DEBUG("copy", "--");
+    LOG_DEBUG("copy", "> Found {} files", _localeFileStorage.size());
+    LOG_DEBUG("copy", "> From: {}. To: {}", sourceDir.generic_string(), binaryDir.generic_string());
+    LOG_DEBUG("copy", "--");
 
     try
     {
@@ -382,6 +385,8 @@ void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, Li
 
     std::size_t filesCopied{ 0 };
 
+    ProgressBar bar({}, _localeFileStorage.size());
+
     for (auto const& path : _localeFileStorage)
     {
         auto fileName = path.filename().generic_string();
@@ -389,15 +394,142 @@ void CopyMgr::CopyFiles(std::string_view type, std::string_view optionalPath, Li
         try
         {
             if (fs::copy_file(path, fs::path(binaryDir.generic_string() + fileName), fs::copy_options::update_existing))
-                LOG_INFO("copy", "> {}. File '{}' copied", ++filesCopied, fileName);
-            else
-                LOG_INFO("copy", "> File '{}' is actual", fileName);
+                filesCopied++;
+
+            bar.UpdatePostfixText(fileName);
+            bar.Update();
         }
         catch (fs::filesystem_error const& error)
         {
             LOG_ERROR("copy", "> Error at copy file: {}", error.what());
         }
     }
+
+    bar.Stop();
+
+    if (!filesCopied)
+        LOG_INFO("copy", "> All files is actual");
+
+    LOG_INFO("copy", "--");
+}
+
+void CopyMgr::CopyScripts()
+{
+    LOG_INFO("copy", "> Prepare to copy dll scripts");
+
+    auto const& sc = GetSC(_selectedSC);
+    if (!sc)
+    {
+        LOG_ERROR("copy", "> Not found paths for SC '{}'", _selectedSC);
+        return;
+    }
+
+    fs::path sourceDir{ sc->first };
+    sourceDir += PATH_TO_BIN;
+    sourceDir += "scripts/";
+
+    fs::path binaryDir{ sc->second + "scripts/" };
+
+    auto ClearBinaryDir = [this](fs::path const& path) -> std::optional<size_t>
+    {
+        ListExtensions extensions{ ".dll", ".pdb" };
+        if (!FillFileList(path, &extensions))
+            return {};
+
+        std::size_t count{ 0 };
+
+        for (auto const& path : _localeFileStorage)
+            if (fs::remove(path))
+                count++;
+
+        return count;
+    };
+
+    try
+    {
+        if (!fs::exists(sourceDir))
+        {
+            LOG_WARN("copy", "> Dir '{}' don't exist. Skip this step", sourceDir.generic_string());
+            return;
+        }
+
+        if (fs::is_empty(sourceDir))
+        {
+            LOG_WARN("copy", "> Dir '{}' is empty. Delete all scripts from binary path", sourceDir.generic_string());
+            LOG_INFO("copy", "> Deleted {} files", ClearBinaryDir(binaryDir).value_or(0));
+            return;
+        }
+    }
+    catch (fs::filesystem_error const& error)
+    {
+        LOG_ERROR("copy", "> Error at check birary dir '{}': {}", binaryDir.generic_string(), error.what());
+        return;
+    }
+
+    LOG_INFO("copy", "> Clear scripts before copy");
+    LOG_INFO("copy", "> Deleted {} files", ClearBinaryDir(binaryDir).value_or(0));
+
+    ListExtensions extensions{ ".dll", ".pdb" };
+    if (!FillFileList(sourceDir, &extensions))
+    {
+        LOG_ERROR("copy", "> Skip this step");
+        return;
+    }
+
+    if (_localeFileStorage.empty())
+        return;
+
+    LOG_DEBUG("copy", "> Start copy dll scripts");
+    LOG_DEBUG("copy", "--");
+    LOG_DEBUG("copy", "> Found {} scripts", _localeFileStorage.size() / 2);
+    LOG_DEBUG("copy", "> From: {}. To: {}", sourceDir.generic_string(), binaryDir.generic_string());
+    LOG_DEBUG("copy", "--");
+
+    try
+    {
+        if (!fs::exists(binaryDir))
+        {
+            LOG_ERROR("copy", "> Dir '{}' don't exist", binaryDir.generic_string());
+            LOG_WARN("copy", "> Create this dir? [yes (default) / no]");
+
+            std::string select;
+            std::getline(std::cin, select);
+
+            if (!select.empty() && select.substr(0, 1) != "y")
+                return;
+
+            fs::create_directory(binaryDir);
+        }
+    }
+    catch (fs::filesystem_error const& error)
+    {
+        LOG_ERROR("copy", "> Error at check birary dir '{}': {}", binaryDir.generic_string(), error.what());
+        return;
+    }
+
+    std::size_t filesCopied{ 0 };
+
+    ProgressBar bar({}, _localeFileStorage.size());
+
+    for (auto const& path : _localeFileStorage)
+    {
+        auto fileName = path.filename().generic_string();
+
+        try
+        {
+            if (fs::copy_file(path, fs::path(binaryDir.generic_string() + fileName), fs::copy_options::update_existing))
+                filesCopied++;
+
+            bar.UpdatePostfixText(fileName);
+            bar.Update();
+        }
+        catch (fs::filesystem_error const& error)
+        {
+            LOG_ERROR("copy", "> Error at copy file: {}", error.what());
+        }
+    }
+
+    bar.Stop();
 
     if (!filesCopied)
         LOG_INFO("copy", "> All files is actual");

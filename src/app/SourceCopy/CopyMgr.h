@@ -53,6 +53,7 @@ private:
     std::string_view GetSCNameFromIndex(uint8 index);
 
     void CopyFiles(std::string_view type, std::string_view optionalPath, ListExtensions extensions = {});
+    void CopyScripts();
 
     bool FillFileList(std::filesystem::path const& path, ListExtensions* extensions = nullptr);
 
