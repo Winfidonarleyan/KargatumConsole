@@ -17,9 +17,9 @@
 
 #include "StringFormat.h"
 #include "Log.h"
-#include <Poco/Exception.h>
-#include <Poco/RegularExpression.h>
 #include <Poco/String.h>
+#include <Warhead/RegularExpression.h>
+#include <Warhead/RegularExpressionException.h>
 #include <locale>
 
 std::string Warhead::String::Trim(std::string& str)
@@ -92,16 +92,16 @@ std::string Warhead::String::ReplaceInPlace(std::string& str, std::string const&
     return Poco::replaceInPlace(str, from, to);
 }
 
-uint32 Warhead::String::PatternReplace(std::string& subject, const std::string& pattern, const std::string& replacement)
+uint32 Warhead::String::PatternReplace(std::string& subject, std::string_view pattern, std::string_view replacement)
 {
     try
     {
-        Poco::RegularExpression re(pattern, Poco::RegularExpression::RE_MULTILINE);
-        return re.subst(subject, replacement, Poco::RegularExpression::RE_GLOBAL);
+        Warhead::RegularExpression re(pattern, Warhead::RegularExpression::RE_MULTILINE);
+        return re.subst(subject, replacement, Warhead::RegularExpression::RE_GLOBAL);
     }
-    catch (const Poco::Exception& e)
+    catch (const Warhead::RegularExpressionException& e)
     {
-        LOG_FATAL("> Warhead::String::PatternReplace: {}", e.displayText());
+        LOG_FATAL("util", "> Warhead::String::PatternReplace: {}", e.GetErrorMessage());
     }
 
     return 0;
