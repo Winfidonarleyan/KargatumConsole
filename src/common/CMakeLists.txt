@@ -40,9 +40,10 @@ target_link_libraries(common
     boost
     fmt
     indicators::indicators
-    json
+    # json
     openssl
-    utf8cpp)
+    utf8cpp
+    WarheadRegex)
 
 add_dependencies(common revision_data.h)
 
