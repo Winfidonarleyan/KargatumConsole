@@ -15,77 +15,25 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "Define.h"
 #include "GitRevision.h"
 #include "Log.h"
 #include "ModuleCreator.h"
-#include "StringConvert.h"
-#include "Config.h"
 #include <iostream>
 
-namespace
+int main()
 {
-    constexpr auto PATH_TO_CONFIG = "F:\\Git\\KargatumConsole\\src\\app\\ModuleCreator\\ModuleCreator.conf";
-}
+    sLog->UsingDefaultLogs();
 
-void Selection();
-
-void SelectCreateModule(uint32 option)
-{
-    system("cls");
-    LOG_INFO("mc", "-- Enter {}Core module name:", option == 1 ? "Warhead" : "Azeroth");
+    LOG_INFO("mc", "-- Enter WarheadCore module name:");
 
     std::string moduleName;
     std::getline(std::cin, moduleName);
 
-    sModule->CreateModule(moduleName, option == 1 ? true : false);
+    sModule->CreateModule(moduleName);
 
-    Selection();
-}
+    LOG_INFO("mc", "-- Done");
 
-void Selection()
-{
-    LOG_INFO("mc", "{}", GitRevision::GetFullVersion());
-    LOG_INFO("mc", "");
-    LOG_INFO("mc", "# -- Select option:");
-    LOG_INFO("mc", "1. Create module WarheadCore");
-    LOG_INFO("mc", "2. Create module AzerothCore");
-    LOG_INFO("mc", "# --");
-    LOG_INFO("mc", "9. Exit");
-    LOG_INFO("mc", "# --");
-    LOG_INFO("mc", "> Enter select:");
-
-    std::string selection;
-    std::getline(std::cin, selection);
-    uint32 option = *Warhead::StringTo<uint32>(selection);
-
-    switch (option)
-    {
-    case 1:
-    case 2:
-        SelectCreateModule(option);
-        break;
-    case 9:
-        exit(0);
-    default:
-        break;
-    }
-}
-
-void LoadConfig()
-{
-    sConfigMgr->Configure(PATH_TO_CONFIG);
-    sConfigMgr->LoadAppConfigs();
-}
-
-int main()
-{
-    LoadConfig();
-
-    while (true)
-    {
-        Selection();
-    }
-
+    std::getline(std::cin, moduleName);
     return 0;
 }
