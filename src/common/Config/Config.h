@@ -1,52 +1,53 @@
 /*
- * This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _WARHEAD_CONFIG_H_
-#define _WARHEAD_CONFIG_H_
+#ifndef CONFIG_H
+#define CONFIG_H
 
 #include "Define.h"
-#include <string>
-#include <vector>
 #include <stdexcept>
+#include <string_view>
+#include <vector>
 
 class WH_COMMON_API ConfigMgr
 {
     ConfigMgr() = default;
-    ConfigMgr(ConfigMgr const&) = delete;
-    ConfigMgr& operator=(ConfigMgr const&) = delete;
     ~ConfigMgr() = default;
+    ConfigMgr(ConfigMgr const&) = delete;
+    ConfigMgr(ConfigMgr&&) = delete;
+    ConfigMgr& operator=(ConfigMgr const&) = delete;
+    ConfigMgr& operator=(ConfigMgr&&) = delete;
 
 public:
-    bool LoadAppConfigs();
-    void Configure(std::string const& initFileName);
+    static bool LoadAppConfigs();
+    static void Configure(std::string_view initFileName);
 
     static ConfigMgr* instance();
 
-    std::string const& GetFilename();
-    std::string const GetConfigPath();
-    std::vector<std::string> GetKeysByString(std::string const& name);
+    static std::string const GetFilename();
+    static std::string const GetConfigPath();
+    static std::vector<std::string> GetKeysByString(std::string const& name);
 
     template<class T>
     T GetOption(std::string const& name, T const& def, bool showLogs = true) const;
 
 private:
-    /// Method used only for loading main configuration files (authserver.conf and worldserver.conf)
-    bool LoadInitial(std::string const& file);
-    bool LoadAdditionalFile(std::string file);
+    static bool LoadInitial(std::string_view file);
+    static bool LoadAdditionalFile(std::string_view file);
 
     template<class T>
     T GetValueDefault(std::string const& name, T const& def, bool showLogs = true) const;
@@ -60,4 +61,4 @@ public:
 
 #define sConfigMgr ConfigMgr::instance()
 
-#endif // _WARHEAD_CONFIG_H_
+#endif

@@ -1,19 +1,22 @@
 /*
- * This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 #include "GitRevision.h"
 #include "revision_data.h"
@@ -21,6 +24,16 @@
 char const* GitRevision::GetHash()
 {
     return _HASH;
+}
+
+char const* GitRevision::GetFullHash()
+{
+    return _FULLHASH;
+}
+
+char const* GitRevision::GetUrlOrigin()
+{
+    return _URL_ORIGIN;
 }
 
 char const* GitRevision::GetDate()
@@ -58,29 +71,25 @@ char const* GitRevision::GetSourceDirectory()
     return _SOURCE_DIRECTORY;
 }
 
-char const* GitRevision::GetMySQLExecutable()
-{
-    return _MYSQL_EXECUTABLE;
-}
-
-#if WH_PLATFORM == WH_PLATFORM_WINDOWS
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
 #  ifdef _WIN64
-#    define WH_PLATFORM_STR "Win64"
+#    define WARHEAD_PLATFORM_STR "Win64"
 #  else
-#    define WH_PLATFORM_STR "Win32"
+#    define WARHEAD_PLATFORM_STR "Win32"
 #  endif
+#else // WARHEAD_PLATFORM
+#  define WARHEAD_PLATFORM_STR "Unix"
 #endif
 
-#ifndef WH_API_USE_DYNAMIC_LINKING
-#  define WH_LINKAGE_TYPE_STR "Static"
+#ifndef WARHEAD_API_USE_DYNAMIC_LINKING
+#  define WARHEAD_LINKAGE_TYPE_STR "Static"
 #else
-#  define WH_LINKAGE_TYPE_STR "Dynamic"
+#  define WARHEAD_LINKAGE_TYPE_STR "Dynamic"
 #endif
 
 char const* GitRevision::GetFullVersion()
 {
-  return "WarheadConsole rev. " VER_PRODUCTVERSION_STR
-    " (" WH_PLATFORM_STR ", " _BUILD_DIRECTIVE ", " WH_LINKAGE_TYPE_STR ")";
+    return VER_COMPANYNAME_STR " rev. " VER_PRODUCTVERSION_STR " (" WARHEAD_PLATFORM_STR ", " _BUILD_DIRECTIVE ", " WARHEAD_LINKAGE_TYPE_STR ")";
 }
 
 char const* GitRevision::GetCompanyNameStr()

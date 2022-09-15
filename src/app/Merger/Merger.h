@@ -18,7 +18,8 @@
 #ifndef _MERGER_H_
 #define _MERGER_H_
 
-#include "Common.h"
+#include "Define.h"
+#include <string>
 
 class WH_COMMON_API Merger
 {

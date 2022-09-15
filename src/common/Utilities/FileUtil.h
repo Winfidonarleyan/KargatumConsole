@@ -15,27 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+#ifndef _WARHEAD_FILE_UTIL_H_
+#define _WARHEAD_FILE_UTIL_H_
 
-#include "LogMessage.h"
+#include "Define.h"
+#include <string_view>
 
-Warhead::LogMessage::LogMessage(std::string_view source, std::string_view text, MessageLevel level, std::string_view option /*= {}*/) :
-    _source(source),
-    _text(text),
-    _level(level),
-    _option(option)
+namespace Warhead::File
 {
+    WH_COMMON_API void CorrectDirPath(std::string& path);
+    WH_COMMON_API bool CreateDirIfNeed(std::string_view path);
 }
 
-Warhead::LogMessage::LogMessage(std::string_view source, std::string_view text, MessageLevel level,
-    std::string_view file, std::size_t line, std::string_view function, std::string_view option /*= {}*/) :
-    _source(source),
-    _text(text),
-    _level(level),
-    _file(file),
-    _line(line),
-    _function(function),
-    _option(option)
-{
-}
+#endif // _WARHEAD_FILE_UTIL_H_

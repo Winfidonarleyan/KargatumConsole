@@ -23,6 +23,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <filesystem>
+#include <vector>
 
 using SCPair = std::pair<std::string, std::string>;
 using ListExtensions = std::vector<std::filesystem::path>;

@@ -1,14 +1,14 @@
 /*
- * This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
@@ -18,10 +18,10 @@
 #ifndef _LOG_H
 #define _LOG_H
 
-#include "Define.h"
 #include "LogCommon.h"
-#include <unordered_map>
 #include <fmt/format.h>
+#include <unordered_map>
+#include <vector>
 
 namespace Warhead
 {
@@ -58,19 +58,21 @@ namespace Warhead
         bool ShouldLog(std::string_view filter, LogLevel const level);
 
         template<typename... Args>
-        inline void outMessage(std::string_view filter, LogLevel const level, std::string_view file, std::size_t line, std::string_view function, std::string_view fmt, Args&&... args)
+        inline void OutMessage(std::string_view filter, LogLevel const level, std::string_view file, std::size_t line, std::string_view function, std::string_view fmt, Args&&... args)
         {
-            _outMessage(filter, level, file, line, function, fmt::format(fmt, std::forward<Args>(args)...));
+            _OutMessage(filter, level, file, line, function, fmt::format(fmt, std::forward<Args>(args)...));
         }
 
         template<typename... Args>
-        inline void outCommand(uint32 account, std::string_view fmt, Args&&... args)
+        inline void OutCommand(uint32 account, std::string_view fmt, Args&&... args)
         {
             if (!ShouldLog("commands.gm", LogLevel::Info))
                 return;
 
-            _outCommand(account, fmt::format(fmt, std::forward<Args>(args)...));
+            _OutCommand(account, fmt::format(fmt, std::forward<Args>(args)...));
         }
+
+        //void OutCharDump(std::string_view str, uint32 accountId, uint64 guid, std::string_view name);
 
         template<class ChannelImpl>
         void RegisterChannel()
@@ -83,8 +85,8 @@ namespace Warhead
         void UsingDefaultLogs(bool value = true);
 
     private:
-        void _outMessage(std::string_view filter, LogLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view message);
-        void _outCommand(uint32 accountID, std::string_view message);
+        void _OutMessage(std::string_view filter, LogLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view message);
+        void _OutCommand(uint32 accountID, std::string_view message);
         void Write(std::unique_ptr<LogMessage>&& msg);
 
         void CreateLoggerFromConfig(std::string_view configLoggerName);
@@ -118,11 +120,11 @@ namespace Warhead
     { \
         try \
         { \
-            sLog->outMessage(filterType__, level__, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); \
+            sLog->OutMessage(filterType__, level__, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); \
         } \
         catch (const std::exception& e) \
         { \
-            sLog->outMessage("server", Warhead::LogLevel::Error, __FILE__, __LINE__, __FUNCTION__, "Wrong format occurred ({}) at '{}:{}'", \
+            sLog->OutMessage("server", Warhead::LogLevel::Error, __FILE__, __LINE__, __FUNCTION__, "Wrong format occurred ({}) at '{}:{}'", \
                 e.what(), __FILE__, __LINE__); \
         } \
     }
@@ -162,6 +164,9 @@ namespace Warhead
     LOG_MSG_BODY(filterType__, Warhead::LogLevel::Trace, __VA_ARGS__)
 
 #define LOG_GM(accountId__, ...) \
-    sLog->outCommand(accountId__, __VA_ARGS__)
+    sLog->OutCommand(accountId__, __VA_ARGS__);
+
+//#define LOG_CHAR_DUMP(message__, accountId__, playerGuid__, playerName__) \
+//    sLog->OutCharDump(message__, accountId__, playerGuid__, playerName__);
 
 #endif

@@ -1,36 +1,41 @@
 /*
- * This file is part of the WarheadApp Project. See AUTHORS file for Copyright information
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 #include "Log.h"
-#include "Logger.h"
-#include "ConsoleChannel.h"
-#include "FileChannel.h"
-#include "Exception.h"
-#include "LogMessage.h"
 #include "Config.h"
-#include "Util.h"
+#include "ConsoleChannel.h"
+#include "Errors.h"
+#include "Exception.h"
+#include "FileChannel.h"
+#include "FileUtil.h"
+#include "LogMessage.h"
+#include "Logger.h"
 #include "StringConvert.h"
+#include "Tokenize.h"
 
 namespace
 {
     // Const loggers name
     constexpr auto LOGGER_ROOT = "root";
     constexpr auto LOGGER_GM = "commands.gm";
-    constexpr auto LOGGER_PLAYER_DUMP = "entities.player.dump";
+    //constexpr auto LOGGER_PLAYER_DUMP = "entities.player.dump";
 
     // Prefix's
     constexpr auto PREFIX_LOGGER = "Logger.";
@@ -76,9 +81,9 @@ void Warhead::Log::LoadFromConfig()
     highestLogLevel = LogLevel::Fatal;
 
     _logsDir = sConfigMgr->GetOption<std::string>("LogsDir", "", false);
+    Warhead::File::CorrectDirPath(_logsDir);
 
-    if (!_logsDir.empty() && (_logsDir.at(_logsDir.length() - 1) != '/') && (_logsDir.at(_logsDir.length() - 1) != '\\'))
-        _logsDir.push_back('/');
+    ASSERT(Warhead::File::CreateDirIfNeed(_logsDir));
 
     Clear();
     //InitLogsDir();
@@ -126,8 +131,6 @@ void Warhead::Log::CreateLoggerFromConfig(std::string_view configLoggerName)
         return;
     }
 
-    LogLevel level = LogLevel::Fatal;
-
     std::string const& options = sConfigMgr->GetOption<std::string>(std::string{ configLoggerName }, "");
     auto loggerName = configLoggerName.substr(PREFIX_LOGGER_LENGTH);
 
@@ -151,7 +154,7 @@ void Warhead::Log::CreateLoggerFromConfig(std::string_view configLoggerName)
         return;
     }
 
-    level = static_cast<LogLevel>(*loggerLevel);
+    LogLevel level = static_cast<LogLevel>(*loggerLevel);
 
     if (level > highestLogLevel)
         highestLogLevel = level;
@@ -190,8 +193,6 @@ void Warhead::Log::CreateChannelsFromConfig(std::string_view logChannelName)
         return;
     }
 
-    LogLevel level = LogLevel::Fatal;
-
     std::string const& options = sConfigMgr->GetOption<std::string>(std::string{ logChannelName }, "");
     auto channelName = logChannelName.substr(PREFIX_CHANNEL_LENGTH);
 
@@ -225,7 +226,7 @@ void Warhead::Log::CreateChannelsFromConfig(std::string_view logChannelName)
         return;
     }
 
-    level = static_cast<LogLevel>(*loggerLevel);
+    LogLevel level = static_cast<LogLevel>(*loggerLevel);
 
     auto const& pattern = tokens[2];
     if (pattern.empty())
@@ -319,15 +320,23 @@ bool Warhead::Log::ShouldLog(std::string_view filter, LogLevel const level)
     return logLevel != LogLevel::Disabled && logLevel >= level;
 }
 
-void Warhead::Log::_outMessage(std::string_view filter, LogLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view message)
+void Warhead::Log::_OutMessage(std::string_view filter, LogLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view message)
 {
     Write(std::make_unique<LogMessage>(filter, message, level, file, line, function));
 }
 
-void Warhead::Log::_outCommand(uint32 accountID, std::string_view message)
+void Warhead::Log::_OutCommand(uint32 accountID, std::string_view message)
 {
     Write(std::make_unique<LogMessage>(LOGGER_GM, message, LogLevel::Info, Warhead::ToString(accountID)));
 }
+
+//void Warhead::Log::OutCharDump(std::string_view str, uint32 accountId, uint64 guid, std::string_view name)
+//{
+//    if (str.empty())
+//        return;
+//
+//    Write(std::make_unique<LogMessage>(LOGGER_PLAYER_DUMP, Warhead::StringFormat("== START DUMP ==\n(Account: {}. Guid: {}. Name: {})\n{}\n== END DUMP ==\n", accountId, guid, name, str), LogLevel::Info));
+//}
 
 void Warhead::Log::Write(std::unique_ptr<LogMessage>&& msg)
 {

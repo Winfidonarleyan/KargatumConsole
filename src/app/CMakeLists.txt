@@ -11,10 +11,9 @@
 #
 
 add_subdirectory(Cleanup)
-add_subdirectory(ClientCheck)
-add_subdirectory(Lab)
-add_subdirectory(Merger)
+#add_subdirectory(ClientCheck)
+#add_subdirectory(Merger)
 add_subdirectory(ModuleCreator)
-add_subdirectory(PrTest)
+#add_subdirectory(PrTest)
 add_subdirectory(TestApp)
-add_subdirectory(SourceCopy)
+#add_subdirectory(SourceCopy)

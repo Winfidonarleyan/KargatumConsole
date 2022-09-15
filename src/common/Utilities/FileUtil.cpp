@@ -18,44 +18,42 @@
 // This is an open source non-commercial project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
-#include "Logger.h"
-#include "Channel.h"
+#include "FileUtil.h"
+#include <algorithm>
+#include <filesystem>
 
-void Warhead::Logger::AddChannel(std::shared_ptr<Channel> channel)
+namespace fs = std::filesystem;
+
+void Warhead::File::CorrectDirPath(std::string& path)
 {
-    std::lock_guard<std::mutex> guard(_mutex);
-    _channels.emplace_back(channel);
-}
-
-void Warhead::Logger::Write(LogMessage const& msg)
-{
-    std::lock_guard<std::mutex> guard(_mutex);
-
-    if (_level < msg.GetLevel())
-        return;
-
-    for (auto const& channel : _channels)
+    if (path.empty())
     {
-        if (channel->GetLevel() < msg.GetLevel())
-            continue;
-
-        channel->Write(msg);
+        path = fs::absolute(fs::current_path()).generic_string();
+        return;
     }
+
+    std::replace(std::begin(path), std::end(path), '\\', '/');
+
+    if (path.at(path.length() - 1) != '/')
+        path.push_back('/');
 }
 
-void Warhead::Logger::DeleteChannel(std::string_view name)
+bool Warhead::File::CreateDirIfNeed(std::string_view path)
 {
-    if (_channels.empty())
-        return;
+    if (path.empty())
+        return true;
 
-    std::lock_guard<std::mutex> guard(_mutex);
+    fs::path dirPath{ path };
 
-    for (auto const& channel : _channels)
+    if (fs::exists(dirPath) && fs::is_directory(path))
+        return true;
+
+    try
     {
-        if (channel->GetName() == name)
-        {
-            std::erase(_channels, channel);
-            return;
-        }
+        return fs::create_directory(dirPath);
+    }
+    catch (...)
+    {
+        return false;
     }
 }

@@ -18,44 +18,27 @@
 // This is an open source non-commercial project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
-#include "Logger.h"
-#include "Channel.h"
+#include "Tokenize.h"
 
-void Warhead::Logger::AddChannel(std::shared_ptr<Channel> channel)
+std::vector<std::string_view> Warhead::Tokenize(std::string_view str, char sep, bool keepEmpty)
 {
-    std::lock_guard<std::mutex> guard(_mutex);
-    _channels.emplace_back(channel);
-}
+    std::vector<std::string_view> tokens;
 
-void Warhead::Logger::Write(LogMessage const& msg)
-{
-    std::lock_guard<std::mutex> guard(_mutex);
-
-    if (_level < msg.GetLevel())
-        return;
-
-    for (auto const& channel : _channels)
+    size_t start = 0;
+    for (size_t end = str.find(sep); end != std::string_view::npos; end = str.find(sep, start))
     {
-        if (channel->GetLevel() < msg.GetLevel())
-            continue;
-
-        channel->Write(msg);
-    }
-}
-
-void Warhead::Logger::DeleteChannel(std::string_view name)
-{
-    if (_channels.empty())
-        return;
-
-    std::lock_guard<std::mutex> guard(_mutex);
-
-    for (auto const& channel : _channels)
-    {
-        if (channel->GetName() == name)
+        if (keepEmpty || (start < end))
         {
-            std::erase(_channels, channel);
-            return;
+            tokens.emplace_back(str.substr(start, end - start));
         }
+
+        start = end + 1;
     }
+
+    if (keepEmpty || (start < str.length()))
+    {
+        tokens.emplace_back(str.substr(start));
+    }
+
+    return tokens;
 }

@@ -19,13 +19,12 @@
 #include "Config.h"
 #include "Log.h"
 #include "StringConvert.h"
-#include "Timer.h"
 #include "Util.h"
 #include "StopWatch.h"
 #include "ProgressBar.h"
 #include "LaunchProcess.h"
-#include <Poco/Exception.h>
-#include <Poco/RegularExpression.h>
+#include "Tokenize.h"
+#include <Warhead/RegularExpression.h>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -33,15 +32,26 @@
 
 namespace fs = std::filesystem;
 
+#ifndef _WARHEAD_CLEANUP_CONFIG
+#define _WARHEAD_CLEANUP_CONFIG "Cleanup.conf"
+#endif
+
 namespace
 {
     constexpr auto PATH_TO_SRC = "src/";
     constexpr auto PATH_TO_MODULES = "modules/";
 
+    inline void ClearConsole()
+    {
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
+        std::system("cls");
+#endif
+    }
+
     // Common functions
     inline bool IsExitstText(std::string_view text, std::string_view textFind)
     {
-        return text.find(textFind) != std::string::npos;
+        return text.find(textFind) != std::string_view::npos;
     }
 
     inline bool IsExitstText(std::string_view text, std::initializer_list<std::string_view> textFindList)
@@ -110,7 +120,7 @@ Cleanup* Cleanup::instance()
 
 void Cleanup::RemoveWhitespace()
 {
-    std::system("cls");
+    ClearConsole();
 
     SendPathInfo();
 
@@ -166,7 +176,7 @@ void Cleanup::RemoveWhitespace()
 
 void Cleanup::ReplaceTabs()
 {
-    system("cls");
+    ClearConsole();
 
     SendPathInfo();
 
@@ -222,7 +232,7 @@ void Cleanup::ReplaceTabs()
 
 void Cleanup::SortIncludes()
 {
-    system("cls");
+    ClearConsole();
 
     SendPathInfo();
 
@@ -278,7 +288,7 @@ void Cleanup::SortIncludes()
 
 void Cleanup::CheckSameIncludes()
 {
-    system("cls");
+    ClearConsole();
 
     SendPathInfo();
 
@@ -334,7 +344,7 @@ void Cleanup::CheckSameIncludes()
 
 void Cleanup::CheckUsingIncludesCount()
 {
-    system("cls");
+    ClearConsole();
 
     SendPathInfo(true);
 
@@ -443,7 +453,7 @@ void Cleanup::SendPathInfo(bool manually /*= false*/)
         std::string selPathEnter;
         std::getline(std::cin, selPathEnter);
 
-        system("cls");
+        ClearConsole();
 
         if (!SetPath(!manually ? GetPathFromConsole(*Warhead::StringTo<uint32>(selPathEnter)) : selPathEnter))
             SendPathInfo(manually);
@@ -457,7 +467,9 @@ void Cleanup::SendPathInfo(bool manually /*= false*/)
 
 void Cleanup::LoadPathInfo()
 {
-    sConfigMgr->Configure("Cleanup.conf");
+    sConfigMgr->Configure(sConfigMgr->GetConfigPath() + std::string(_WARHEAD_CLEANUP_CONFIG));
+
+    LOG_INFO("cleanup", "> Using configuration file: {}", sConfigMgr->GetFilename());
 
     if (!sConfigMgr->LoadAppConfigs())
     {
@@ -493,7 +505,7 @@ void Cleanup::LoadPathInfo()
 
     for (auto const& path : tokens)
     {
-        LOG_DEBUG("> Added path '{}'. Index {}", path, ++index);
+        LOG_DEBUG("cleanup", "> Added path '{}'. Index {}", path, ++index);
 
         std::string toStr{ path };
         CorrectPath(toStr);

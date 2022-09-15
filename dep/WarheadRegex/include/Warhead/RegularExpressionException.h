@@ -4,6 +4,7 @@
 #define _WARHEAD_RE_EXCEPTION_H_
 
 #include <exception>
+#include <string>
 #include <string_view>
 
 namespace Warhead

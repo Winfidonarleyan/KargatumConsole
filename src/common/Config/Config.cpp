@@ -2,80 +2,89 @@
  * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 #include "Config.h"
 #include "Log.h"
 #include "StringConvert.h"
 #include "StringFormat.h"
+#include "Tokenize.h"
 #include "Util.h"
-#include <mutex>
+#include <fmt/core.h>
+#include <algorithm>
 #include <fstream>
+#include <mutex>
 #include <unordered_map>
 
 namespace
 {
     std::string _filename;
-    std::vector<std::string> _additonalFiles;
-    std::vector<std::string> _args;
     std::unordered_map<std::string /*name*/, std::string /*value*/> _configOptions;
     std::mutex _configLock;
+    bool _usingDistConfig = false;
 
-    // Check system configs like *server.conf*
-    bool IsAppConfig(std::string_view fileName)
+    // Check logging system configs like LogChannel.* and Logger.*
+    bool IsLoggingSystemOptions(std::string_view optionName)
     {
-        size_t found = fileName.find_first_of("authserver.conf");
-        if (found != std::string::npos)
-            return true;
+        size_t foundAppender = optionName.find("LogChannel.");
+        size_t foundLogger = optionName.find("Logger.");
 
-        found = fileName.find_first_of("worldserver.conf");
-        if (found != std::string::npos)
-            return true;
-
-        return false;
+        return foundAppender != std::string_view::npos || foundLogger != std::string_view::npos;
     }
 
-    template<typename Format, typename... Args>
-    inline void PrintError(std::string_view filename, Format&& fmt, Args&& ... args)
-    {
-        fmt::print(fmt, std::forward<Args>(args)...);
-        fmt::print("\n");
-    }
-
-    void AddKey(std::string const& optionName, std::string const& optionKey, bool replace = true)
+    void AddKey(std::string const& optionName, std::string const& optionKey, std::string_view fileName, bool isOptional)
     {
         auto const& itr = _configOptions.find(optionName);
-        if (itr != _configOptions.end())
+
+        // Check old option
+        if (isOptional && itr == _configOptions.end())
         {
-            if (!replace)
+            if (!IsLoggingSystemOptions(optionName))
             {
-                LOG_ERROR("config", "> Config: Option '{}' is exist! Option key - '{}'", optionName, itr->second);
+                fmt::print("> Config::LoadFile: Found incorrect option '{}' in config file '{}'. Skip\n", optionName, fileName);
+
+#ifdef CONFIG_ABORT_INCORRECT_OPTIONS
+                ABORT("> Core can't start if found incorrect options");
+#endif
                 return;
             }
-
-            _configOptions.erase(optionName);
         }
+
+        // Check exit option
+        if (itr != _configOptions.end())
+            _configOptions.erase(optionName);
 
         _configOptions.emplace(optionName, optionKey);
     }
 
-    void ParseFile(std::string const& file)
+    bool ParseFile(std::string_view file, bool isOptional)
     {
-        std::ifstream in(file);
+        std::ifstream in(file.data());
 
         if (in.fail())
-            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Failed open file '{}'", file.c_str()));
+        {
+            if (isOptional)
+            {
+                // No display error if file optional
+                return false;
+            }
+
+            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Failed open file '{}'", file));
+        }
 
         uint32 count = 0;
         uint32 lineNumber = 0;
@@ -86,7 +95,7 @@ namespace
             auto const& itr = fileConfigs.find(confOption);
             if (itr != fileConfigs.end())
             {
-                PrintError(file, "> Config::LoadFile: Dublicate key name '{}' in config file '{}'", std::string(confOption).c_str(), file.c_str());
+                fmt::print("> Config::LoadFile: Duplicate key name '{}' in config file '{}'\n", confOption, file);
                 return true;
             }
 
@@ -101,7 +110,9 @@ namespace
 
             // read line error
             if (!in.good() && !in.eof())
-                throw ConfigException(Warhead::StringFormat("> Config::LoadFile: Failure to read line number %u in file '{}'", lineNumber, file.c_str()));
+            {
+                throw ConfigException(Warhead::StringFormat("> Config::LoadFile: Failure to read line number {} in file '{}'", lineNumber, file));
+            }
 
             // remove whitespace in line
             line = Warhead::String::Trim(line, in.getloc());
@@ -127,7 +138,7 @@ namespace
 
             if (equal_pos == std::string::npos || equal_pos == line.length())
             {
-                PrintError(file, "> Config::LoadFile: Failure to read line number %u in file '{}'. Skip this line", lineNumber, file.c_str());
+                fmt::print("> Config::LoadFile: Failure to read line number {} in file '{}'. Skip this line\n", lineNumber, file);
                 continue;
             }
 
@@ -147,40 +158,49 @@ namespace
 
         // No lines read
         if (!count)
-            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Empty file '{}'", file.c_str()));
+        {
+            if (isOptional)
+            {
+                // No display error if file optional
+                return false;
+            }
+
+            throw ConfigException(Warhead::StringFormat("Config::LoadFile: Empty file '{}'", file));
+        }
 
         // Add correct keys if file load without errors
         for (auto const& [entry, key] : fileConfigs)
-            AddKey(entry, key);
+            AddKey(entry, key, file, isOptional);
+
+        return true;
     }
 
-    bool LoadFile(std::string const& file)
+    bool LoadFile(std::string_view file, bool isOptional)
     {
         try
         {
-            ParseFile(file);
-            return true;
+            return ParseFile(file, isOptional);
         }
         catch (const std::exception& e)
         {
-            PrintError(file, "> {}", e.what());
+            fmt::print("> {}\n", e.what());
         }
 
         return false;
     }
 }
 
-bool ConfigMgr::LoadInitial(std::string const& file)
+bool ConfigMgr::LoadInitial(std::string_view file)
 {
     std::lock_guard<std::mutex> lock(_configLock);
     _configOptions.clear();
-    return LoadFile(file);
+    return LoadFile(file, false);
 }
 
-bool ConfigMgr::LoadAdditionalFile(std::string file)
+bool ConfigMgr::LoadAdditionalFile(std::string_view file)
 {
     std::lock_guard<std::mutex> lock(_configLock);
-    return LoadFile(file);
+    return LoadFile(file, true);
 }
 
 ConfigMgr* ConfigMgr::instance()
@@ -197,8 +217,8 @@ T ConfigMgr::GetValueDefault(std::string const& name, T const& def, bool showLog
     {
         if (showLogs)
         {
-            LOG_ERROR("> Config: Missing name {} in config, add \"{} = {}\"",
-                name.c_str(), name.c_str(), Warhead::ToString(def).c_str());
+            LOG_ERROR("server.loading", "> Config: Missing property {} in all config files, at least the .dist file must contain: \"{} = {}\"",
+                      name, name, Warhead::ToString(def));
         }
 
         return def;
@@ -209,8 +229,8 @@ T ConfigMgr::GetValueDefault(std::string const& name, T const& def, bool showLog
     {
         if (showLogs)
         {
-            LOG_ERROR("> Config: Bad value defined for name '{}', going to use '{}' instead",
-                name.c_str(), Warhead::ToString(def).c_str());
+            LOG_ERROR("server.loading", "> Config: Bad value defined for name '{}', going to use '{}' instead",
+                      name, Warhead::ToString(def));
         }
 
         return def;
@@ -227,8 +247,8 @@ std::string ConfigMgr::GetValueDefault<std::string>(std::string const& name, std
     {
         if (showLogs)
         {
-            LOG_ERROR("> Config: Missing name {} in config, add \"{} = {}\"",
-                name.c_str(), name.c_str(), def.c_str());
+            LOG_ERROR("server.loading", "> Config: Missing option {}, add \"{} = {}\"",
+                      name, name, def);
         }
 
         return def;
@@ -253,8 +273,8 @@ WH_COMMON_API bool ConfigMgr::GetOption<bool>(std::string const& name, bool cons
     {
         if (showLogs)
         {
-            LOG_ERROR("> Config: Bad value defined for name '{}', going to use '{}' instead",
-                name.c_str(), def ? "true" : "false");
+            LOG_ERROR("server.loading", "> Config: Bad value defined for name '{}', going to use '{}' instead",
+                      name, def ? "true" : "false");
         }
 
         return def;
@@ -270,26 +290,34 @@ std::vector<std::string> ConfigMgr::GetKeysByString(std::string const& name)
     std::vector<std::string> keys;
 
     for (auto const& [optionName, key] : _configOptions)
+    {
         if (!optionName.compare(0, name.length(), name))
+        {
             keys.emplace_back(optionName);
+        }
+    }
 
     return keys;
 }
 
-std::string const& ConfigMgr::GetFilename()
+std::string const ConfigMgr::GetFilename()
 {
     std::lock_guard<std::mutex> lock(_configLock);
-    return _filename;
+    return _usingDistConfig ? _filename + ".dist" : _filename;
 }
 
 std::string const ConfigMgr::GetConfigPath()
 {
     std::lock_guard<std::mutex> lock(_configLock);
 
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
     return "configs/";
+#else
+    return std::string(_CONF_DIR) + "/";
+#endif
 }
 
-void ConfigMgr::Configure(std::string const& initFileName)
+void ConfigMgr::Configure(std::string_view initFileName)
 {
     _filename = initFileName;
 }
@@ -301,15 +329,11 @@ bool ConfigMgr::LoadAppConfigs()
         return false;
 
     // #2 - Load .conf file
-    /*if (!LoadAdditionalFile(_filename))
-        return false;*/
+    if (!LoadAdditionalFile(_filename))
+        _usingDistConfig = true;
 
     return true;
 }
-
-/*
- * End deprecated geters
- */
 
 #define TEMPLATE_CONFIG_OPTION(__typename) \
     template WH_COMMON_API __typename ConfigMgr::GetOption<__typename>(std::string const& name, __typename const& def, bool showLogs /*= true*/) const;

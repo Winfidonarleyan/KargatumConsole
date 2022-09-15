@@ -15,21 +15,31 @@
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-# check what platform we're on (64-bit or 32-bit), and create a simpler test than CMAKE_SIZEOF_VOID_P
-if(CMAKE_SIZEOF_VOID_P MATCHES 8)
-    set(PLATFORM 64)
-    MESSAGE(STATUS "Detected 64-bit platform")
+# Set build-directive (used in core to tell which buildtype we used)
+target_compile_definitions(warhead-compile-option-interface
+  INTERFACE
+    -D_BUILD_DIRECTIVE="${CMAKE_BUILD_TYPE}")
+
+if(PLATFORM EQUAL 32)
+  target_compile_options(warhead-compile-option-interface
+    INTERFACE
+      -axSSE2)
 else()
-    set(PLATFORM 32)
-    MESSAGE(STATUS "Detected 32-bit platform")
+  target_compile_options(warhead-compile-option-interface
+    INTERFACE
+      -xSSE2)
 endif()
 
-include("${CMAKE_SOURCE_DIR}/cmake/platform/settings.cmake")
-
-if(WIN32)
-  include("${CMAKE_SOURCE_DIR}/cmake/platform/win/settings.cmake")
-elseif(UNIX)
-  include("${CMAKE_SOURCE_DIR}/cmake/platform/unix/settings.cmake")
+if(WITH_WARNINGS)
+  target_compile_options(warhead-warning-interface
+    INTERFACE
+      -w1)
+  message(STATUS "ICC: All warnings enabled")
 endif()
 
-include("${CMAKE_SOURCE_DIR}/cmake/platform/after_platform.cmake")
+if(WITH_COREDEBUG)
+  target_compile_options(warhead-compile-option-interface
+    INTERFACE
+      -g)
+  message(STATUS "ICC: Debug-flag set (-g)")
+endif()

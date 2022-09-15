@@ -16,6 +16,7 @@
  */
 
 #include "Cleanup.h"
+#include "Config.h"
 #include "GitRevision.h"
 #include "Log.h"
 #include "StringConvert.h"
@@ -70,7 +71,6 @@ int main()
     sLog->UsingDefaultLogs();
 
     LOG_INFO("cleanup", "> {}", GitRevision::GetFullVersion());
-    LOG_INFO("cleanup", "--");
 
     sClean->LoadPathInfo();
 

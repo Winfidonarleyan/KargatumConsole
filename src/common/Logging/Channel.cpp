@@ -1,6 +1,22 @@
 /*
-
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 #include "Channel.h"
 #include "Exception.h"
@@ -8,8 +24,7 @@
 #include "StringConvert.h"
 #include "Timer.h"
 #include <filesystem>
-#include <array>
-#include <format>
+#include <fmt/chrono.h>
 
 Warhead::Channel::Channel(ChannelType type, std::string_view name, LogLevel level, std::string_view pattern /*= {}*/) :
     _type(type), _name(name), _level(level), _pattern(pattern)
@@ -63,7 +78,7 @@ void Warhead::Channel::ParsePattern()
                 if (it == end)
                     --it;
 
-                act.property = prop;
+                act.property = std::move(prop);
             }
             else
             {
@@ -108,9 +123,8 @@ void Warhead::Channel::Format(LogMessage const& msg, std::string& text)
 
     text.clear();
 
-    std::chrono::zoned_time localTime{ std::chrono::current_zone(), msg.GetTime() };
-
-    auto epoch = localTime.get_local_time().time_since_epoch();
+    auto timePoint = msg.GetTime();
+    auto epochTime = std::chrono::duration_cast<Seconds>(timePoint.time_since_epoch());
 
     for (auto const& pa : _patternActions)
     {
@@ -147,29 +161,31 @@ void Warhead::Channel::Format(LogMessage const& msg, std::string& text)
                 break;
             }
             case 'u': text.append(Warhead::ToString(msg.GetSourceLine())); break;
-            case 'w': text.append(std::format("{0:%a}", localTime)); break;
-            case 'W': text.append(std::format("{0:%A}", localTime)); break;
-            case 'b': text.append(std::format("{0:%b}", localTime)); break;
-            case 'B': text.append(std::format("{0:%B}", localTime)); break;
-            case 'd': text.append(std::format("{0:%d}", localTime)); break;
-            case 'm': text.append(std::format("{0:%m}", localTime)); break;
-            case 'n': text.append(std::format("{0:%Om}", localTime)); break;
-            case 'y': text.append(std::format("{0:%y}", localTime)); break;
-            case 'Y': text.append(std::format("{0:%Y}", localTime)); break;
-            case 'h': text.append(std::format("{0:%OH}", localTime)); break;
-            case 'H': text.append(std::format("{0:%OI}", localTime)); break;
-            case 'A': text.append(std::format("{0:%p}", localTime)); break;
-            case 'M': text.append(std::format("{0:%OM}", localTime)); break;
-            case 'S': text.append(std::format("{0:%OS}", localTime)); break;
-            case 'E': text.append(std::format("{}", std::chrono::duration_cast<Seconds>(localTime.get_local_time().time_since_epoch()).count())); break;
+            case 'w': text.append(fmt::format("{:%a}", timePoint)); break;
+            case 'W': text.append(fmt::format("{:%A}", timePoint)); break;
+            case 'b': text.append(fmt::format("{:%b}", timePoint)); break;
+            case 'B': text.append(fmt::format("{:%B}", timePoint)); break;
+            case 'd': text.append(fmt::format("{:%d}", timePoint)); break;
+            case 'm': text.append(fmt::format("{:%m}", timePoint)); break;
+            case 'n': text.append(fmt::format("{:%Om}", timePoint)); break;
+            case 'y': text.append(fmt::format("{:%y}", timePoint)); break;
+            case 'Y': text.append(fmt::format("{:%Y}", timePoint)); break;
+            case 'h': text.append(fmt::format("{:%OH}", timePoint)); break;
+            case 'H': text.append(fmt::format("{:%OI}", timePoint)); break;
+            case 'A': text.append(fmt::format("{:%p}", timePoint)); break;
+            case 'M': text.append(fmt::format("{:%OM}", timePoint)); break;
+            case 'S': text.append(fmt::format("{:%OS}", timePoint)); break;
+            case 'E': text.append(fmt::format("{}", epochTime.count())); break;
             case 'v':
             {
-                if (pa.length > msg.GetSource().length())	//append spaces
-                    text.append(msg.GetSource()).append(pa.length - msg.GetSource().length(), ' ');
-                else if (pa.length && pa.length < msg.GetSource().length()) // crop
-                    text.append(msg.GetSource(), msg.GetSource().length() - pa.length, pa.length);
+                auto source = msg.GetSource();
+
+                if (pa.length > source.length())    //append spaces
+                    text.append(source).append(pa.length - source.length(), ' ');
+                else if (pa.length && pa.length < source.length()) // crop
+                    text.append(source, source.length() - pa.length, pa.length);
                 else
-                    text.append(msg.GetSource());
+                    text.append(source);
                 break;
             }
         }

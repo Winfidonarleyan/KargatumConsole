@@ -18,7 +18,7 @@
 #ifndef _CLEANUP_H_
 #define _CLEANUP_H_
 
-#include "Common.h"
+#include "Define.h"
 
 class WH_COMMON_API ClientCheck
 {

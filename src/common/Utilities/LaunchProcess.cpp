@@ -18,48 +18,57 @@
 #include "LaunchProcess.h"
 #include "Log.h"
 #include "StringFormat.h"
+
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
 #include <Poco/Process.h>
 #include <Poco/Pipe.h>
 #include <Poco/PipeStream.h>
 #include <Poco/StreamCopier.h>
+#endif
 
 namespace
 {
-    // Path to powershell
-    constexpr auto POWER_SHELL_EXE = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
-
     // Git commands
     constexpr auto GIT_ADD_BRANCH = "git checkout -b";
     constexpr auto GIT_ADD_FILES = "git add .";
     constexpr auto GIT_COMMIT = "git commit -m";
-    constexpr auto GIT_COMMIT_MESSAGE = "\"feat(Misc): correct\"";
 
-    inline constexpr bool IsExitstText(std::string_view text, std::string_view textFind)
+    inline constexpr bool IsExistText(std::string_view text, std::string_view textFind)
     {
-        return text.find(textFind) != std::string::npos;
+        return text.find(textFind) != std::string_view::npos;
     }
+
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
+    // Path to powershell
+    constexpr auto SHELL_EXECUTABE = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+#endif
 }
 
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
 void Warhead::Process::SendCommand(std::string_view path, std::string_view command)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     // Add commands
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Pipe outPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, &outPipe, 0);
+    Poco::Pipe errPipe;
+
+    Poco::Process::launch(SHELL_EXECUTABE, args, nullptr, &outPipe, nullptr);
 
     std::string text;
     Poco::PipeInputStream istr(outPipe);
     Poco::StreamCopier::copyToString(istr, text);
 
-    LOG_INFO("\n{}", text);
+    LOG_INFO("process", "\n{}", text);
 }
 
 void Warhead::Process::Git::CommitAllFiles(std::string_view path, std::string_view commitMessage, std::string_view commitDescription)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     std::string command = fmt::format("{}; {} \"{}\" ", GIT_ADD_FILES, GIT_COMMIT, commitMessage);
 
@@ -70,7 +79,7 @@ void Warhead::Process::Git::CommitAllFiles(std::string_view path, std::string_vi
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Pipe outPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, &outPipe, 0);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, &outPipe, 0);
 
     std::string text;
     Poco::PipeInputStream istr(outPipe);
@@ -81,7 +90,8 @@ void Warhead::Process::Git::CommitAllFiles(std::string_view path, std::string_vi
 
 void Warhead::Process::Git::CreateBranch(std::string_view path, std::string_view branchName)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     std::string command = fmt::format("{} {}", GIT_ADD_BRANCH, branchName);
 
@@ -89,7 +99,7 @@ void Warhead::Process::Git::CreateBranch(std::string_view path, std::string_view
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Pipe outPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, &outPipe, 0);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, &outPipe, 0);
 
     std::string text;
     Poco::PipeInputStream istr(outPipe);
@@ -100,7 +110,8 @@ void Warhead::Process::Git::CreateBranch(std::string_view path, std::string_view
 
 void Warhead::Process::Git::Clone(std::string_view path, std::string_view url)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     std::string command = fmt::format("git clone {}", url);
 
@@ -108,7 +119,7 @@ void Warhead::Process::Git::Clone(std::string_view path, std::string_view url)
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Pipe outPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, &outPipe, 0);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, &outPipe, 0);
 
     std::string text;
     Poco::PipeInputStream istr(outPipe);
@@ -119,7 +130,8 @@ void Warhead::Process::Git::Clone(std::string_view path, std::string_view url)
 
 bool Warhead::Process::Git::IsCorrectUpstream(std::string_view path, std::string_view upstreamName)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     std::string command = fmt::format("git remote show {}", upstreamName);
 
@@ -128,22 +140,22 @@ bool Warhead::Process::Git::IsCorrectUpstream(std::string_view path, std::string
 
     Poco::Pipe outPipe;
     Poco::Pipe errPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, &outPipe, &errPipe);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, &outPipe, &errPipe);
 
     std::string text;
     std::string textErr;
     Poco::PipeInputStream istr(outPipe);
     Poco::PipeInputStream istr1(errPipe);
     Poco::StreamCopier::copyToString(istr, text);
-    Poco::StreamCopier::copyToString(istr1, textErr);    
+    Poco::StreamCopier::copyToString(istr1, textErr);
 
-    if (!textErr.empty() && IsExitstText(textErr, fmt::format("fatal: '{}' does not appear to be a git repository", upstreamName)))
+    if (!textErr.empty() && IsExistText(textErr, fmt::format("fatal: '{}' does not appear to be a git repository", upstreamName)))
     {
         LOG_FATAL(">> Upstream ({}) is incorrect!", upstreamName);
         return false;
     }
 
-    if (!text.empty() && IsExitstText(text, fmt::format("* remote {}", upstreamName)))
+    if (!text.empty() && IsExistText(text, fmt::format("* remote {}", upstreamName)))
     {
         LOG_DEBUG(">> Upstream ({}) is correct", upstreamName);
         return true;
@@ -155,7 +167,8 @@ bool Warhead::Process::Git::IsCorrectUpstream(std::string_view path, std::string
 
 void Warhead::Process::Git::CheckoutPR(std::string_view path, std::string_view upstreamName, std::string_view prID)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     std::string command = fmt::format("git pull {} pull/{}/head", upstreamName, prID);
 
@@ -163,20 +176,21 @@ void Warhead::Process::Git::CheckoutPR(std::string_view path, std::string_view u
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Pipe errPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, 0, &errPipe);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, 0, &errPipe);
 
     std::string textErr;
     Poco::PipeInputStream istr1(errPipe);
     Poco::StreamCopier::copyToString(istr1, textErr);
 
     // fatal: couldn't find remote ref pull/324234234/head
-    if (!textErr.empty() && IsExitstText(textErr, fmt::format("fatal: couldn't find remote ref pull/{}/head", prID)))
+    if (!textErr.empty() && IsExistText(textErr, fmt::format("fatal: couldn't find remote ref pull/{}/head", prID)))
         LOG_ERROR("{}", textErr);
 }
 
 bool Warhead::Process::Git::IsExistBranch(std::string_view path, std::string_view name)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     std::string command = fmt::format("git branch --list {}", name);
 
@@ -184,7 +198,7 @@ bool Warhead::Process::Git::IsExistBranch(std::string_view path, std::string_vie
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
     Poco::Pipe outPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, &outPipe, 0);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, &outPipe, 0);
 
     std::string text;
     Poco::PipeInputStream istr(outPipe);
@@ -208,18 +222,19 @@ void Warhead::Process::Git::Checkout(std::string_view path, std::string_view bra
     // Add commands
     args.emplace_back(StringFormat("cd {}; {}", path, command));
 
-    Poco::Process::launch(POWER_SHELL_EXE, args, 0, 0, 0);
+    Poco::Process::launch(SHELL_EXECUTABE, args, 0, 0, 0);
 }
 
 bool Warhead::Process::Git::IsRepository(std::string_view path)
 {
-    std::vector<std::string> args = { { "-command" } };
+    std::vector<std::string> args;
+    MakeDefaultArgsList(args);
 
     // Add commands
     args.emplace_back(StringFormat("cd {}; git status", path));
 
     Poco::Pipe outPipe;
-    Poco::Process::launch(POWER_SHELL_EXE, args, nullptr, &outPipe, nullptr);
+    Poco::Process::launch(SHELL_EXECUTABE, args, nullptr, &outPipe, nullptr);
 
     std::string textOut;
     Poco::PipeInputStream istr1(outPipe);
@@ -228,5 +243,31 @@ bool Warhead::Process::Git::IsRepository(std::string_view path)
     if (textOut.empty())
         return false;
 
-    return !IsExitstText(textOut, "fatal: not a git repository (or any of the parent directories): .git");
+    return !IsExistText(textOut, "fatal: not a git repository (or any of the parent directories): .git");
 }
+
+#else
+bool Warhead::Process::Git::IsRepository(std::string_view path)
+{
+    return std::system(StringFormat("cd {} && git status", path).c_str()) == 0;
+}
+
+void Warhead::Process::Git::CommitAllFiles(std::string_view path, std::string_view commitMessage, std::string_view commitDescription)
+{
+    std::string command = StringFormat("cd {} && {} && {} \"{}\"", path, GIT_ADD_FILES, GIT_COMMIT, commitMessage);
+
+    if (!commitDescription.empty())
+        command.append(StringFormat(" -m \"{}\"", commitDescription));
+
+    LOG_INFO("process", "Command: {}", command);
+
+    std::system(command.c_str());
+}
+
+#endif
+
+
+
+
+
+

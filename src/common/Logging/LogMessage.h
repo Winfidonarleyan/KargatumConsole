@@ -1,15 +1,26 @@
 /*
-*/
-
+ * This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef _WARHEAD_MESSAGE_H_
 #define _WARHEAD_MESSAGE_H_
 
-#include "Define.h"
 #include "LogCommon.h"
 #include "Timer.h"
 #include <memory>
-#include <string_view>
 
 namespace Warhead
 {
@@ -19,7 +30,7 @@ namespace Warhead
         using MessageLevel = LogLevel;
 
         LogMessage(std::string_view source, std::string_view text, MessageLevel level, std::string_view option = {});
-	    LogMessage(std::string_view source, std::string_view text, MessageLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view option = {});
+        LogMessage(std::string_view source, std::string_view text, MessageLevel level, std::string_view file, std::size_t line, std::string_view function, std::string_view option = {});
 
         ~LogMessage() = default;
 
@@ -35,12 +46,6 @@ namespace Warhead
         inline void SetTime(SystemTimePoint time) { _time = time; }
         inline SystemTimePoint GetTime() const { return _time; }
 
-	    /*void setTid(std::size_t pid);
-	    long getTid() const;
-
-        void setPid(std::size_t pid);
-	    long getPid() const;*/
-
         inline void SetSourceFile(std::string_view file) { _file = file; }
         inline std::string_view GetSourceFile() const { return _file; }
 
@@ -51,19 +56,15 @@ namespace Warhead
         inline std::string_view GetOption() const { return _option; }
 
     private:
-	    std::string _source;
-	    std::string _text;
+        std::string _source;
+        std::string _text;
         MessageLevel _level{ MessageLevel::Fatal };
         SystemTimePoint _time{ std::chrono::system_clock::now() };
 
-	    std::string _file;
+        std::string _file;
         std::size_t _line{ 0 };
         std::string _function;
         std::string _option;
-
-        //std::size_t _tid{ 0 };
-        //std::string _thread;
-        //std::size_t _pid{ 0 };
     };
 }
 

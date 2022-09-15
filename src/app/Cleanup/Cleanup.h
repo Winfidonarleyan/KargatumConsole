@@ -18,7 +18,7 @@
 #ifndef _CLEANUP_H_
 #define _CLEANUP_H_
 
-#include "Common.h"
+#include "Define.h"
 #include "Duration.h"
 #include <filesystem>
 #include <unordered_map>

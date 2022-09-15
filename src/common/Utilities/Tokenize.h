@@ -15,27 +15,23 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+#ifndef _WARHEAD_TOKENIZE_H_
+#define _WARHEAD_TOKENIZE_H_
 
-#include "LogMessage.h"
+#include "Define.h"
+#include <string_view>
+#include <vector>
 
-Warhead::LogMessage::LogMessage(std::string_view source, std::string_view text, MessageLevel level, std::string_view option /*= {}*/) :
-    _source(source),
-    _text(text),
-    _level(level),
-    _option(option)
+namespace Warhead
 {
+    WH_COMMON_API std::vector<std::string_view> Tokenize(std::string_view str, char sep, bool keepEmpty);
+
+    /* this would return string_view into temporary otherwise */
+    std::vector<std::string_view> Tokenize(std::string&&, char, bool) = delete;
+    std::vector<std::string_view> Tokenize(std::string const&&, char, bool) = delete;
+
+    /* the delete overload means we need to make this explicit */
+    inline std::vector<std::string_view> Tokenize(char const* str, char sep, bool keepEmpty) { return Tokenize(std::string_view(str ? str : ""), sep, keepEmpty); }
 }
 
-Warhead::LogMessage::LogMessage(std::string_view source, std::string_view text, MessageLevel level,
-    std::string_view file, std::size_t line, std::string_view function, std::string_view option /*= {}*/) :
-    _source(source),
-    _text(text),
-    _level(level),
-    _file(file),
-    _line(line),
-    _function(function),
-    _option(option)
-{
-}
+#endif // _WARHEAD_TOKENIZE_H_

@@ -20,6 +20,7 @@
 
 #include "Define.h"
 #include "Optional.h"
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <boost/asio/ip/tcp.hpp>
@@ -32,11 +33,6 @@ namespace boost::asio::ssl
 {
     template <typename Stream>
     class stream;
-}
-
-namespace std::filesystem
-{
-    class path;
 }
 
 namespace Warhead::Asio

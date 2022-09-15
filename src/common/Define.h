@@ -10,7 +10,7 @@
 #include <climits>
 #include <cstddef>
 
-#if WH_PLATFORM == WH_PLATFORM_WINDOWS
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
 #  define WH_PATH_MAX 260
 #  define _USE_MATH_DEFINES
 #  ifndef DECLSPEC_NORETURN
@@ -19,7 +19,7 @@
 #  ifndef DECLSPEC_DEPRECATED
 #    define DECLSPEC_DEPRECATED __declspec(deprecated)
 #  endif //DECLSPEC_DEPRECATED
-#endif // WH_PLATFORM
+#endif // WARHEAD_PLATFORM
 
 #if WH_COMPILER == WH_COMPILER_GNU
 #  define ATTR_NORETURN __attribute__((__noreturn__))

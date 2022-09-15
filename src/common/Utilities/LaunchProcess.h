@@ -23,11 +23,16 @@
 
 namespace Warhead::Process
 {
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
     WH_COMMON_API void SendCommand(std::string_view path, std::string_view command);
+#else
+    WH_COMMON_API void SendCommand(std::string_view command);
+#endif
 }
 
 namespace Warhead::Process::Git
 {
+#if WARHEAD_PLATFORM == WARHEAD_PLATFORM_WINDOWS
     WH_COMMON_API void CommitAllFiles(std::string_view path, std::string_view commitMessage, std::string_view commitDescription = {});
     WH_COMMON_API void CreateBranch(std::string_view path, std::string_view branchName);
     WH_COMMON_API void Clone(std::string_view path, std::string_view url);
@@ -35,6 +40,9 @@ namespace Warhead::Process::Git
     WH_COMMON_API void CheckoutPR(std::string_view path, std::string_view upstreamName, std::string_view prID);
     WH_COMMON_API bool IsExistBranch(std::string_view path, std::string_view name);
     WH_COMMON_API void Checkout(std::string_view path, std::string_view branchName);
+#endif
+
+    WH_COMMON_API void CommitAllFiles(std::string_view path, std::string_view commitMessage, std::string_view commitDescription = {});
     WH_COMMON_API bool IsRepository(std::string_view path);
 }
 

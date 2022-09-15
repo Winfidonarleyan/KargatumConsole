@@ -16,32 +16,12 @@
  */
 
 #include "Util.h"
-#include "Common.h"
 #include "Log.h"
 #include <Poco/Path.h>
 #include <Poco/File.h>
 #include <filesystem>
 #include <fstream>
 #include <utf8.h>
-
-std::vector<std::string_view> Warhead::Tokenize(std::string_view str, char sep, bool keepEmpty)
-{
-    std::vector<std::string_view> tokens;
-
-    size_t start = 0;
-    for (size_t end = str.find(sep); end != std::string_view::npos; end = str.find(sep, start))
-    {
-        if (keepEmpty || (start < end))
-            tokens.push_back(str.substr(start, end - start));
-
-        start = end + 1;
-    }
-
-    if (keepEmpty || (start < str.length()))
-        tokens.push_back(str.substr(start));
-
-    return tokens;
-}
 
 bool StringEqualI(std::string_view a, std::string_view b)
 {
@@ -52,12 +32,12 @@ std::string Warhead::File::GetFileText(std::string const& path, bool openBinary 
 {
     std::filesystem::path _path(path);
 
-    int openMode = std::ios_base::in;
+    auto openMode = std::ios_base::in;
 
     if (openBinary)
         openMode |= std::ios_base::binary;
 
-    std::ifstream in(_path, openMode);
+    std::ifstream in(_path.generic_string().c_str(), openMode);
 
     if (!in.is_open())
     {

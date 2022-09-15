@@ -6,6 +6,7 @@
 #include "ModuleCreator.h"
 #include "Log.h"
 #include "StringFormat.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>

@@ -19,22 +19,10 @@
 #define _UTIL_H
 
 #include "Define.h"
-#include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
-
-namespace Warhead
-{
-    WH_COMMON_API std::vector<std::string_view> Tokenize(std::string_view str, char sep, bool keepEmpty);
-
-    /* this would return string_view into temporary otherwise */
-    std::vector<std::string_view> Tokenize(std::string&&, char, bool) = delete;
-    std::vector<std::string_view> Tokenize(std::string const&&, char, bool) = delete;
-
-    /* the delete overload means we need to make this explicit */
-    inline std::vector<std::string_view> Tokenize(char const* str, char sep, bool keepEmpty) { return Tokenize(std::string_view(str ? str : ""), sep, keepEmpty); }
-}
 
 WH_COMMON_API bool StringEqualI(std::string_view str1, std::string_view str2);
 

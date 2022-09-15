@@ -15,7 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "Define.h"
 #include "GitRevision.h"
 #include "Log.h"
 #include "Merger.h"
