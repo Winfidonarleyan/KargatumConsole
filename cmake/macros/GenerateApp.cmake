@@ -30,6 +30,12 @@ macro(GenerateApp dir appName)
     PUBLIC
       common)
 
+  if (${ARGC} GREATER 2)
+    target_link_libraries(${appName}
+      PRIVATE
+        ${ARGV2})
+  endif()
+
   CollectIncludeDirectories(
     ${dir}
     PUBLIC_INCLUDES)

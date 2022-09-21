@@ -15,42 +15,38 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AsioHacksFwd_h__
-#define AsioHacksFwd_h__
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
-#include <boost/version.hpp>
+#include "AsyncCallbackMgr.h"
+#include "Duration.h"
 
-/**
-  Collection of forward declarations to improve compile time
- */
-namespace boost::posix_time
+/*static*/ Warhead::Async::AsyncCallbackMgr* Warhead::Async::AsyncCallbackMgr::instance()
 {
-    class ptime;
+    static AsyncCallbackMgr instance;
+    return &instance;
 }
 
-namespace boost::asio
+bool Warhead::Async::AsyncCallback::InvokeIfReady()
 {
-    template <typename Time>
-    struct time_traits;
+    if (_future.valid() && _future.wait_for(0s) == std::future_status::ready)
+        return true;
+
+    return false;
 }
 
-namespace boost::asio::ip
+void Warhead::Async::AsyncCallbackMgr::AddAsyncCallback(std::function<void()>&& execute, Microseconds delay /*= 0us*/)
 {
-    class address;
-    class tcp;
+    _asyncCallbacks.AddCallback(AsyncCallback(std::async(std::launch::async, [delay, execute = std::move(execute)]()
+    {
+        if (delay > 0us)
+            std::this_thread::sleep_for(delay);
 
-    template <typename InternetProtocol>
-    class basic_endpoint;
-
-    typedef basic_endpoint<tcp> tcp_endpoint;
+        execute();
+    })));
 }
 
-namespace Warhead::Asio
+void Warhead::Async::AsyncCallbackMgr::ProcessReadyCallbacks()
 {
-    class DeadlineTimer;
-    class IoContext;
-    class Resolver;
-    class Strand;
+    _asyncCallbacks.ProcessReadyCallbacks();
 }
-
-#endif // AsioHacksFwd_h__

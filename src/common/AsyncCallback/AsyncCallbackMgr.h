@@ -15,42 +15,56 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AsioHacksFwd_h__
-#define AsioHacksFwd_h__
+#ifndef ASYNC_CALLBACK_MGR_H_
+#define ASYNC_CALLBACK_MGR_H_
 
-#include <boost/version.hpp>
+#include "AsyncCallbackProcessor.h"
+#include "Duration.h"
+#include <functional>
+#include <future>
+#include <memory>
 
-/**
-  Collection of forward declarations to improve compile time
- */
-namespace boost::posix_time
+namespace Warhead::Async
 {
-    class ptime;
+    using AsyncCallbackFuture = std::future<void>;
+
+    class WH_COMMON_API AsyncCallback
+    {
+    public:
+        AsyncCallback(AsyncCallbackFuture&& future) : _future(std::move(future)) { }
+        AsyncCallback(AsyncCallback&&) = default;
+
+        AsyncCallback& operator=(AsyncCallback&&) = default;
+
+        bool InvokeIfReady();
+
+    private:
+        AsyncCallbackFuture _future;
+
+        AsyncCallback(AsyncCallback const& right) = delete;
+        AsyncCallback& operator=(AsyncCallback const& right) = delete;
+    };
+
+    class WH_COMMON_API AsyncCallbackMgr
+    {
+    public:
+        static AsyncCallbackMgr* instance();
+
+        void AddAsyncCallback(std::function<void()>&& execute, Microseconds delay = 0us);
+        void ProcessReadyCallbacks();
+
+    private:
+        AsyncCallbackMgr() = default;
+        ~AsyncCallbackMgr() = default;
+        AsyncCallbackMgr(AsyncCallbackMgr const&) = delete;
+        AsyncCallbackMgr(AsyncCallbackMgr&&) = delete;
+        AsyncCallbackMgr& operator=(AsyncCallbackMgr const&) = delete;
+        AsyncCallbackMgr& operator=(AsyncCallbackMgr&&) = delete;
+
+        AsyncCallbackProcessor<AsyncCallback> _asyncCallbacks;
+    };
 }
 
-namespace boost::asio
-{
-    template <typename Time>
-    struct time_traits;
-}
+#define sAsyncCallbackMgr Warhead::Async::AsyncCallbackMgr::instance()
 
-namespace boost::asio::ip
-{
-    class address;
-    class tcp;
-
-    template <typename InternetProtocol>
-    class basic_endpoint;
-
-    typedef basic_endpoint<tcp> tcp_endpoint;
-}
-
-namespace Warhead::Asio
-{
-    class DeadlineTimer;
-    class IoContext;
-    class Resolver;
-    class Strand;
-}
-
-#endif // AsioHacksFwd_h__
+#endif // ASYNC_CALLBACK_MGR_H_

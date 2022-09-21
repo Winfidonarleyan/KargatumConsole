@@ -10,4 +10,4 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 
-GenerateApp(${CMAKE_CURRENT_SOURCE_DIR} "TestApp")
+GenerateApp(${CMAKE_CURRENT_SOURCE_DIR} "TestApp" "database")

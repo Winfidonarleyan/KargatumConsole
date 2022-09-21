@@ -49,6 +49,12 @@
 #  define WH_COMMON_API WH_API_IMPORT
 #endif
 
+#ifdef WH_API_EXPORT_DATABASE
+#  define WH_DATABASE_API WH_API_EXPORT
+#else
+#  define WH_DATABASE_API WH_API_IMPORT
+#endif
+
 #define UI64FMTD "%" PRIu64
 #define UI64LIT(N) UINT64_C(N)
 

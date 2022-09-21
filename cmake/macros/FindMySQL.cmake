@@ -1,14 +1,31 @@
 #
-# Find the MySQL client includes and library
-# 
+# This file is part of the WarheadCore Project. See AUTHORS file for Copyright information
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation; either version 3 of the License, or (at your
+# option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
+#
+# Find the MySQL client includes and library
+#
 # This module defines
 # MYSQL_INCLUDE_DIR, where to find mysql.h
 # MYSQL_LIBRARIES, the libraries to link against to connect to MySQL
 # MYSQL_FOUND, if false, you cannot build anything that requires MySQL.
-
+#
 # also defined, but not for general use are
 # MYSQL_LIBRARY, where to find the MySQL library.
+#
 
 set( MYSQL_FOUND 0 )
 
@@ -28,9 +45,9 @@ endif(WIN32)
 # Find MariaDB for Windows
 if (WIN32)
   # Set know versions MariaDB
-  set(_MARIADB_KNOWN_VERSIONS "MariaDB 10.5" "MariaDB 10.4" "MariaDB 10.3" "MariaDB 10.2" "MariaDB 10.1")
+  set(_MARIADB_KNOWN_VERSIONS "MariaDB 10.9" "MariaDB 10.8" "MariaDB 10.7" "MariaDB 10.6" "MariaDB 10.5" "MariaDB 10.4" "MariaDB 10.3")
 
-  # Set default oprions
+  # Set default options
   set(MARIADB_FOUND_LIB 0)
   set(MARIADB_FOUND_INCLUDE 0)
   set(MARIADB_FOUND_EXECUTABLE 0)
@@ -45,6 +62,7 @@ if (WIN32)
       ${MYSQL_ADD_INCLUDE_PATH}
       "${PROGRAM_FILES_64}/${MariaDBVersion}/include/mysql"
       "${PROGRAM_FILES_32}/${MariaDBVersion}/include/mysql"
+      "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/mysql"
     DOC
       "Specify the directory containing mysql.h."
   )
@@ -64,6 +82,7 @@ if (WIN32)
       "${PROGRAM_FILES_32}/${MariaDBVersion}/lib/opt"
       "$ENV{ProgramFiles}/${MariaDBVersion}/lib/opt"
       "$ENV{SystemDrive}/${MariaDBVersion}/lib/opt"
+      "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
     DOC
       "Specify the location of the mysql library here."
   )
@@ -71,7 +90,19 @@ if (WIN32)
   if(MYSQL_LIBRARY)
     set(MARIADB_FOUND_LIB 1)
   endif()
-  if (MYSQL_LIBRARY AND MYSQL_INCLUDE_DIR)
+
+  find_program(MYSQL_EXECUTABLE mysql
+    PATHS
+      "${PROGRAM_FILES_64}/${MariaDBVersion}/bin"
+      "${PROGRAM_FILES_64}/${MariaDBVersion}/bin/opt"
+      "${PROGRAM_FILES_32}/${MariaDBVersion}/bin"
+      "${PROGRAM_FILES_32}/${MariaDBVersion}/bin/opt"
+      "$ENV{ProgramFiles}/${MariaDBVersion}/bin/opt"
+      "$ENV{SystemDrive}/${MariaDBVersion}/bin/opt"
+    DOC
+        "path to your mysql binary.")
+
+  if (MYSQL_LIBRARY AND MYSQL_INCLUDE_DIR AND MYSQL_EXECUTABLE)
     set(MARIADB_FOUND 1)
   endif()
 
@@ -85,7 +116,7 @@ if (WIN32)
       "$ENV{SystemDrive}/${MariaDBVersion}/bin/opt"
     DOC
         "path to your mysql binary.")
-  
+
   endmacro(FindLibMariaDB)
 
   foreach(version ${_MARIADB_KNOWN_VERSIONS})
@@ -155,24 +186,28 @@ find_path(MYSQL_INCLUDE_DIR
     /usr/local/include
     /usr/local/include/mysql
     /usr/local/mysql/include
+    "C:/Program Files/MySQL/MySQL Server 8.0/include"
     "C:/Program Files/MySQL/MySQL Server 5.7/include"
     "C:/Program Files/MySQL/MySQL Server 5.6/include"
     "C:/Program Files/MySQL/include"
     "C:/MySQL/include"
+    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 8.0;Location]/include"
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.7;Location]/include"
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.6;Location]/include"
+    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 8.0;Location]/include"
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.7;Location]/include"
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.6;Location]/include"
     "$ENV{ProgramFiles}/MySQL/*/include"
     "$ENV{SystemDrive}/MySQL/*/include"
     "c:/msys/local/include"
+    "$ENV{MYSQL_INCLUDE_DIR}"
   DOC
     "Specify the directory containing mysql.h."
 )
 
 if( UNIX )
   foreach(LIB ${MYSQL_ADD_LIBRARIES})
-    find_library( MYSQL_LIBRARY 
+    find_library( MYSQL_LIBRARY
       NAMES
         mysql libmysql ${LIB}
       PATHS
@@ -188,19 +223,25 @@ if( UNIX )
 endif( UNIX )
 
 if( WIN32 )
-  find_library( MYSQL_LIBRARY 
+  find_library( MYSQL_LIBRARY
     NAMES
       libmysql
     PATHS
       ${MYSQL_ADD_LIBRARIES_PATH}
+      "C:/Program Files/MySQL/MySQL Server 8.0/lib"
+      "C:/Program Files/MySQL/MySQL Server 8.0/lib/opt"
       "C:/Program Files/MySQL/MySQL Server 5.7/lib/opt"
       "C:/Program Files/MySQL/MySQL Server 5.6/lib/opt"
       "C:/Program Files/MySQL/lib"
       "C:/MySQL/lib/debug"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 8.0;Location]/lib"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 8.0;Location]/lib/opt"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.7;Location]/lib"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.7;Location]/lib/opt"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.6;Location]/lib"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.6;Location]/lib/opt"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 8.0;Location]/lib"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 8.0;Location]/lib/opt"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.7;Location]/lib"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.7;Location]/lib/opt"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.6;Location]/lib"
@@ -208,6 +249,7 @@ if( WIN32 )
       "$ENV{ProgramFiles}/MySQL/*/lib/opt"
       "$ENV{SystemDrive}/MySQL/*/lib/opt"
       "c:/msys/local/include"
+      "$ENV{MYSQL_LIBRARY}"
     DOC "Specify the location of the mysql library here."
   )
 endif( WIN32 )
@@ -243,19 +285,29 @@ endif( UNIX )
 if( WIN32 )
   find_program(MYSQL_EXECUTABLE mysql
     PATHS
-      "C:/Program Files/MySQL/MySQL Server 5.6/bin"
-      "C:/Program Files/MySQL/MySQL Server 5.6/bin/opt"
-      "C:/Program Files/MySQL/bin"
-      "C:/Program Files (x86)/MySQL/MySQL Server 5.6/bin"
-      "C:/Program Files (x86)/MySQL/MySQL Server 5.6/bin/opt"
-      "C:/Program Files (x86)/MySQL/bin"
+      "${PROGRAM_FILES_64}/MySQL/MySQL Server 8.0/bin"
+      "${PROGRAM_FILES_64}/MySQL/MySQL Server 5.7/bin"
+      "${PROGRAM_FILES_64}/MySQL/MySQL Server 8.0/bin/opt"
+      "${PROGRAM_FILES_64}/MySQL/MySQL Server 5.7/bin/opt"
+      "${PROGRAM_FILES_64}/MySQL/bin"
+      "${PROGRAM_FILES_32}/MySQL/MySQL Server 8.0/bin"
+      "${PROGRAM_FILES_32}/MySQL/MySQL Server 5.7/bin"
+      "${PROGRAM_FILES_32}/MySQL/MySQL Server 8.0/bin/opt"
+      "${PROGRAM_FILES_32}/MySQL/MySQL Server 5.7/bin/opt"
+      "${PROGRAM_FILES_32}/MySQL/bin"
       "C:/MySQL/bin/debug"
-      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.6;Location]/bin"
-      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.6;Location]/bin/opt"
-      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.6;Location]/bin"
-      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.6;Location]/bin/opt"
-      "$ENV{ProgramFiles}/MySQL/*/bin/opt"
-      "$ENV{SystemDrive}/MySQL/*/bin/opt"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 8.0;Location]/bin"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.7;Location]/bin"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 8.0;Location]/bin/opt"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\MySQL AB\\MySQL Server 5.7;Location]/bin/opt"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 8.0;Location]/bin"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.7;Location]/bin"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 8.0;Location]/bin/opt"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server 5.7;Location]/bin/opt"
+      "$ENV{ProgramFiles}/MySQL/MySQL Server 8.0/bin/opt"
+      "$ENV{ProgramFiles}/MySQL/MySQL Server 5.7/bin/opt"
+      "$ENV{SystemDrive}/MySQL/MySQL Server 8.0/bin/opt"
+      "$ENV{SystemDrive}/MySQL/MySQL Server 5.7/bin/opt"
       "c:/msys/local/include"
       "$ENV{MYSQL_ROOT}/bin"
     DOC
